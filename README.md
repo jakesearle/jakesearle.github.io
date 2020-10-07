@@ -1,2 +1,1 @@
-# jakesearle.github.io
-[excel](./excel-importer.md)
+# readme for the site
