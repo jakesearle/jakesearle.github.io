@@ -1,3 +1,3 @@
 # Index
-[excel](./excel-importer.md)
-[byu](./byu/index.md)
+- [excel](./excel-importer.md)
+- [byu](./byu/index.md)

@@ -1,2 +1,2 @@
 # BYU Index
-* [relc351](./relc351/index.md)
+* [Fall 2020](./fall2020/index.md)
