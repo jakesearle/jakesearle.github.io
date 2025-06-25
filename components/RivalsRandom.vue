@@ -101,12 +101,6 @@ function pickRandomCharacter() {
       </div>
     </div>
   </div>
-  <!-- <img
-    v-if="selectedCharacter"
-    :src="`/images/${selectedCharacter.name}-2D.png`"
-    :alt="selectedCharacter.name"
-    class="selected-icon"
-  /> -->
   <div class="character-list">
     <div
       v-for="char in characters"
