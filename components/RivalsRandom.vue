@@ -1,30 +1,112 @@
 <script setup>
-import { reactive } from "vue";
+import { reactive, watch, ref } from "vue";
 
-const characters = reactive([
-  { type: "fire", name: "Forsburn", level: 0, editing: false },
-  { type: "fire", name: "Loxodont", level: 0, editing: false },
-  { type: "fire", name: "Clairen", level: 0, editing: false },
-  { type: "fire", name: "Zetterburn", level: 0, editing: false },
-  { type: "earth", name: "Olympia", level: 0, editing: false },
-  { type: "earth", name: "Maypul", level: 0, editing: false },
-  { type: "earth", name: "Kragg", level: 0, editing: false },
-  { type: "air", name: "Wrastor", level: 0, editing: false },
-  { type: "air", name: "Fleet", level: 0, editing: false },
-  { type: "water", name: "Ranno", level: 0, editing: false },
-  { type: "water", name: "Orcane", level: 0, editing: false },
-  { type: "water", name: "Etalus", level: 0, editing: false },
-]);
+// Load saved characters from localStorage if available
+const saved = localStorage.getItem("characters");
+const characters = reactive(
+  saved
+    ? JSON.parse(saved)
+    : [
+        { type: "fire", name: "Forsburn", level: 0, editing: false },
+        { type: "fire", name: "Loxodont", level: 0, editing: false },
+        { type: "fire", name: "Clairen", level: 0, editing: false },
+        { type: "fire", name: "Zetterburn", level: 0, editing: false },
+        { type: "earth", name: "Olympia", level: 0, editing: false },
+        { type: "earth", name: "Maypul", level: 0, editing: false },
+        { type: "earth", name: "Kragg", level: 0, editing: false },
+        { type: "air", name: "Wrastor", level: 0, editing: false },
+        { type: "air", name: "Fleet", level: 0, editing: false },
+        { type: "water", name: "Ranno", level: 0, editing: false },
+        { type: "water", name: "Orcane", level: 0, editing: false },
+        { type: "water", name: "Etalus", level: 0, editing: false },
+      ]
+);
 
 function increment(char) {
   char.level++;
 }
 function decrement(char) {
-  char.level--;
+  if (char.level > 0) {
+    char.level--;
+  }
+}
+
+watch(
+  characters,
+  (newVal) => {
+    // Strip reactive proxy and exclude "editing" from saved state if you want
+    const toSave = newVal.map(({ type, name, level }) => ({
+      type,
+      name,
+      level,
+    }));
+    localStorage.setItem("characters", JSON.stringify(toSave));
+  },
+  { deep: true }
+);
+
+const selectedCharacter = ref(null);
+let flashingInterval = null;
+
+function pickRandomCharacter() {
+  const weightedPool = characters.flatMap((char) =>
+    char.level > 0 ? Array(char.level).fill(char) : []
+  );
+
+  if (weightedPool.length === 0) {
+    selectedCharacter.value = null;
+    return;
+  }
+
+  // Start flashing
+  let flashCount = 0;
+  flashingInterval = setInterval(() => {
+    const randomChar =
+      characters[Math.floor(Math.random() * characters.length)];
+    selectedCharacter.value = randomChar;
+    flashCount++;
+
+    // Stop after ~500ms (adjust speed with interval delay and flashCount)
+    if (flashCount > 5) {
+      clearInterval(flashingInterval);
+      // Pick final weighted random character
+      const finalChar =
+        weightedPool[Math.floor(Math.random() * weightedPool.length)];
+      selectedCharacter.value = finalChar;
+    }
+  }, 75); // flashes every 75ms
 }
 </script>
 
 <template>
+  <div class="random-row">
+    <div class="parallelogram-right" @click="pickRandomCharacter">
+      <div class="question">?</div>
+    </div>
+    <div
+      v-if="selectedCharacter"
+      class="parallelogram-left"
+      :class="`${selectedCharacter.type}`"
+    >
+      <div
+        class="selected-char-background"
+        :style="{
+          backgroundImage: `url(/images/${selectedCharacter.name}-2D.png)`,
+        }"
+      ></div>
+      <div class="card-items">
+        <div class="name">
+          {{ selectedCharacter.name }}
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- <img
+    v-if="selectedCharacter"
+    :src="`/images/${selectedCharacter.name}-2D.png`"
+    :alt="selectedCharacter.name"
+    class="selected-icon"
+  /> -->
   <div class="character-list">
     <div
       v-for="char in characters"
@@ -35,7 +117,7 @@ function decrement(char) {
       <div
         class="char-background"
         :style="{
-          backgroundImage: `url(../images/${char.name}-2D.png)`,
+          backgroundImage: `url(/images/${char.name}-2D.png)`,
         }"
       ></div>
       <div class="card-items">
@@ -44,7 +126,12 @@ function decrement(char) {
         </div>
         <div class="controls-container">
           <div class="controls">
-            <button @click="decrement(char)">−</button>
+            <button
+              :style="{ visibility: char.level > 0 ? 'visible' : 'hidden' }"
+              @click="decrement(char)"
+            >
+              −
+            </button>
 
             <span v-if="!char.editing" @click="char.editing = true">
               {{ char.level }}
@@ -66,10 +153,93 @@ function decrement(char) {
 </template>
 
 <style scoped>
+.random-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  /* justify-content: space-between; */
+  margin-bottom: 8px;
+  height: 200px;
+}
+
+.parallelogram-right {
+  width: 60%;
+  height: 200px;
+  background: #2e346e;
+  clip-path: polygon(0 0, 100% 0, 80% 100%, 0% 100%);
+  color: white;
+  display: flex;
+  border-radius: 5px;
+  justify-content: center;
+  align-items: center;
+}
+
+.question {
+  font-size: 128px;
+  padding-right: 20%;
+  color: #d4d4dc;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+  display: flex;
+}
+
+.parallelogram-left {
+  width: 60%;
+  height: 200px;
+  border-radius: 5px;
+  overflow: hidden;
+  display: flex;
+  position: relative;
+  clip-path: polygon(20% 0, 100% 0, 100% 100%, 0% 100%);
+  margin-left: -8%;
+}
+
+.parallelogram-left.fire {
+  background-color: #4e0415;
+}
+
+.parallelogram-left.earth {
+  background-color: #68b55d;
+}
+
+.parallelogram-left.air {
+  background-color: #fd9dfc;
+}
+
+.parallelogram-left.water {
+  background-color: #6473ce;
+}
+
+.selected-char-background {
+  width: 90%;
+  height: 100%;
+  background-size: cover;
+  background-position-x: right;
+  background-position-y: top;
+  display: flex;
+  color: white;
+  transform: scaleX(-1);
+  position: absolute;
+  right: 0;
+}
+
+.parallelogram-left .card-items {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+}
+
+.parallelogram-left .name {
+  text-align: right;
+  margin-right: 8px;
+}
+
 .character-list {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row;
+  /* align-items: center; */
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-left: 64px;
 }
 
 .parallelogram {
@@ -89,7 +259,7 @@ function decrement(char) {
   background-position: center;
   display: flex;
   color: white;
-  padding-bottom: 0.5rem;
+  /* padding-bottom: 0.5rem; */
   position: absolute;
 }
 
@@ -117,6 +287,7 @@ function decrement(char) {
 
 .name {
   margin-left: 8px;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
 }
 
 .controls-container {
@@ -158,7 +329,7 @@ function decrement(char) {
 .controls button {
   font-size: 1.5rem;
   padding: 0.5rem 1rem;
-  border: 2px solid white;
+  border: 2px solid var(--vp-c-text-1);
   border-radius: 4px;
   cursor: pointer;
 }
