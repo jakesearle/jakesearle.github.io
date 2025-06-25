@@ -19,7 +19,7 @@ const characters = reactive([
 function increment(char) {
   char.level++;
 }
-function decrement() {
+function decrement(char) {
   char.level--;
 }
 </script>
@@ -35,7 +35,7 @@ function decrement() {
       <div
         class="char-background"
         :style="{
-          backgroundImage: `url(/images/${char.name}-2D.png)`,
+          backgroundImage: `url(../images/${char.name}-2D.png)`,
         }"
       ></div>
       <div class="card-items">
