@@ -49,16 +49,24 @@ const selectedCharacter = ref(null);
 let flashingInterval = null;
 
 function pickRandomCharacter() {
-  const weightedPool = characters.flatMap((char) =>
-    char.level > 0 ? Array(char.level).fill(char) : []
-  );
+  const maxLevel = Math.max(...characters.map((c) => c.level));
+
+  const weightedPool = characters.flatMap((char) => {
+    if (char.level === 0 && !invertRatio.value) return [];
+
+    let weight = char.level;
+    if (invertRatio.value) {
+      weight = maxLevel - char.level + 1; // lower levels = higher weight
+    }
+
+    return Array(Math.max(1, weight)).fill(char);
+  });
 
   if (weightedPool.length === 0) {
     selectedCharacter.value = null;
     return;
   }
 
-  // Start flashing
   let flashCount = 0;
   flashingInterval = setInterval(() => {
     const randomChar =
@@ -66,16 +74,16 @@ function pickRandomCharacter() {
     selectedCharacter.value = randomChar;
     flashCount++;
 
-    // Stop after ~500ms (adjust speed with interval delay and flashCount)
     if (flashCount > 5) {
       clearInterval(flashingInterval);
-      // Pick final weighted random character
       const finalChar =
         weightedPool[Math.floor(Math.random() * weightedPool.length)];
       selectedCharacter.value = finalChar;
     }
-  }, 75); // flashes every 75ms
+  }, 75);
 }
+
+const invertRatio = ref(false); // checkbox state
 </script>
 
 <template>
@@ -100,6 +108,12 @@ function pickRandomCharacter() {
         </div>
       </div>
     </div>
+  </div>
+  <div class="randomizer-controls">
+    <label>
+      <input type="checkbox" v-model="invertRatio" />
+      Invert probabilities
+    </label>
   </div>
   <div class="character-list">
     <div
