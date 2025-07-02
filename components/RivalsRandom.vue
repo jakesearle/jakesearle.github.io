@@ -7,19 +7,20 @@ const characters = reactive(
   saved
     ? JSON.parse(saved)
     : [
-        { type: "fire", name: "Forsburn", level: 0, editing: false },
-        { type: "fire", name: "Loxodont", level: 0, editing: false },
-        { type: "fire", name: "Clairen", level: 0, editing: false },
-        { type: "fire", name: "Zetterburn", level: 0, editing: false },
-        { type: "earth", name: "Olympia", level: 0, editing: false },
-        { type: "earth", name: "Maypul", level: 0, editing: false },
-        { type: "earth", name: "Kragg", level: 0, editing: false },
-        { type: "air", name: "Wrastor", level: 0, editing: false },
-        { type: "air", name: "Fleet", level: 0, editing: false },
-        { type: "water", name: "Ranno", level: 0, editing: false },
-        { type: "water", name: "Orcane", level: 0, editing: false },
-        { type: "water", name: "Etalus", level: 0, editing: false },
-      ]
+      { type: "fire", name: "Forsburn", level: 0, editing: false },
+      { type: "fire", name: "Loxodont", level: 0, editing: false },
+      { type: "fire", name: "Clairen", level: 0, editing: false },
+      { type: "fire", name: "Zetterburn", level: 0, editing: false },
+      { type: "earth", name: "Olympia", level: 0, editing: false },
+      { type: "earth", name: "Maypul", level: 0, editing: false },
+      { type: "earth", name: "Kragg", level: 0, editing: false },
+      { type: "air", name: "Wrastor", level: 0, editing: false },
+      { type: "air", name: "Fleet", level: 0, editing: false },
+      { type: "air", name: "Absa", level: 0, editing: false },
+      { type: "water", name: "Ranno", level: 0, editing: false },
+      { type: "water", name: "Orcane", level: 0, editing: false },
+      { type: "water", name: "Etalus", level: 0, editing: false },
+    ]
 );
 
 function increment(char) {
@@ -91,17 +92,10 @@ const invertRatio = ref(false); // checkbox state
     <div class="parallelogram-right" @click="pickRandomCharacter">
       <div class="question">?</div>
     </div>
-    <div
-      v-if="selectedCharacter"
-      class="parallelogram-left"
-      :class="`${selectedCharacter.type}`"
-    >
-      <div
-        class="selected-char-background"
-        :style="{
-          backgroundImage: `url(/images/${selectedCharacter.name}-2D.png)`,
-        }"
-      ></div>
+    <div v-if="selectedCharacter" class="parallelogram-left" :class="`${selectedCharacter.type}`">
+      <div class="selected-char-background" :style="{
+        backgroundImage: `url(/images/${selectedCharacter.name}-2D.png)`,
+      }"></div>
       <div class="card-items">
         <div class="name">
           {{ selectedCharacter.name }}
@@ -116,41 +110,25 @@ const invertRatio = ref(false); // checkbox state
     </label>
   </div>
   <div class="character-list">
-    <div
-      v-for="char in characters"
-      :key="char.name"
-      class="parallelogram"
-      :class="`${char.type}`"
-    >
-      <div
-        class="char-background"
-        :style="{
-          backgroundImage: `url(/images/${char.name}-2D.png)`,
-        }"
-      ></div>
+    <div v-for="char in characters" :key="char.name" class="parallelogram" :class="`${char.type}`">
+      <div class="char-background" :style="{
+        backgroundImage: `url(/images/${char.name}-2D.png)`,
+      }"></div>
       <div class="card-items">
         <div class="name">
           {{ char.name }}
         </div>
         <div class="controls-container">
           <div class="controls">
-            <button
-              :style="{ visibility: char.level > 0 ? 'visible' : 'hidden' }"
-              @click="decrement(char)"
-            >
+            <button :style="{ visibility: char.level > 0 ? 'visible' : 'hidden' }" @click="decrement(char)">
               −
             </button>
 
             <span v-if="!char.editing" @click="char.editing = true">
               {{ char.level }}
             </span>
-            <input
-              v-else
-              v-model.number="char.level"
-              @blur="char.editing = false"
-              @keyup.enter="char.editing = false"
-              type="number"
-            />
+            <input v-else v-model.number="char.level" @blur="char.editing = false" @keyup.enter="char.editing = false"
+              type="number" />
 
             <button @click="increment(char)">+</button>
           </div>
@@ -244,7 +222,7 @@ const invertRatio = ref(false); // checkbox state
 .character-list {
   display: flex;
   flex-direction: row;
-  /* align-items: center; */
+  justify-content: center;
   flex-wrap: wrap;
   gap: 10px;
   padding-left: 64px;
@@ -260,7 +238,8 @@ const invertRatio = ref(false); // checkbox state
 }
 
 .char-background {
-  transform: skew(20deg); /* undo skew */
+  transform: skew(20deg);
+  /* undo skew */
   width: 100%;
   height: 100%;
   background-size: cover;
