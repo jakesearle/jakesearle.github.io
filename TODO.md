@@ -2,4 +2,4 @@
 
 ## to-do
 
-- [ ] Remove .html from pages
+- [X] Remove .html from pages
