@@ -98,7 +98,7 @@ const invertRatio = ref(false); // checkbox state
       }"></div>
       <div class="card-items">
         <div class="name">
-          {{ selectedCharacter.name }}
+          {{ selectedCharacter.name }} ({{ selectedCharacter.level }})
         </div>
       </div>
     </div>
