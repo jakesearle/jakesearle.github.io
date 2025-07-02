@@ -225,7 +225,6 @@ const invertRatio = ref(false); // checkbox state
   justify-content: center;
   flex-wrap: wrap;
   gap: 10px;
-  padding-left: 64px;
 }
 
 .parallelogram {
