@@ -1,31 +1,32 @@
 <script setup>
 import { reactive, watch, ref } from "vue";
 
+function getDefault() {
+  return [
+    { type: "fire", name: "Forsburn", level: 0, editing: false },
+    { type: "fire", name: "Loxodont", level: 0, editing: false },
+    { type: "fire", name: "Clairen", level: 0, editing: false },
+    { type: "fire", name: "Zetterburn", level: 0, editing: false },
+    { type: "earth", name: "Olympia", level: 0, editing: false },
+    { type: "earth", name: "Maypul", level: 0, editing: false },
+    { type: "earth", name: "Kragg", level: 0, editing: false },
+    { type: "air", name: "Wrastor", level: 0, editing: false },
+    { type: "air", name: "Fleet", level: 0, editing: false },
+    { type: "air", name: "Absa", level: 0, editing: false },
+    { type: "water", name: "Ranno", level: 0, editing: false },
+    { type: "water", name: "Orcane", level: 0, editing: false },
+    { type: "water", name: "Etalus", level: 0, editing: false },
+  ]
+}
+
 // Load saved characters from localStorage if available
 const saved = localStorage.getItem("characters");
-const characters = reactive(
-  saved
-    ? JSON.parse(saved)
-    : [
-      { type: "fire", name: "Forsburn", level: 0, editing: false },
-      { type: "fire", name: "Loxodont", level: 0, editing: false },
-      { type: "fire", name: "Clairen", level: 0, editing: false },
-      { type: "fire", name: "Zetterburn", level: 0, editing: false },
-      { type: "earth", name: "Olympia", level: 0, editing: false },
-      { type: "earth", name: "Maypul", level: 0, editing: false },
-      { type: "earth", name: "Kragg", level: 0, editing: false },
-      { type: "air", name: "Wrastor", level: 0, editing: false },
-      { type: "air", name: "Fleet", level: 0, editing: false },
-      { type: "air", name: "Absa", level: 0, editing: false },
-      { type: "water", name: "Ranno", level: 0, editing: false },
-      { type: "water", name: "Orcane", level: 0, editing: false },
-      { type: "water", name: "Etalus", level: 0, editing: false },
-    ]
-);
+const characters = reactive(saved ? JSON.parse(saved) : getDefault());
 
 function increment(char) {
   char.level++;
 }
+
 function decrement(char) {
   if (char.level > 0) {
     char.level--;
@@ -48,7 +49,6 @@ watch(
 
 const selectedCharacter = ref(null);
 let flashingInterval = null;
-
 function pickRandomCharacter() {
   const maxLevel = Math.max(...characters.map((c) => c.level));
 
@@ -85,6 +85,12 @@ function pickRandomCharacter() {
 }
 
 const invertRatio = ref(false); // checkbox state
+
+function resetCharacters() {
+  const defaults = getDefault()
+  characters.splice(0, characters.length, ...defaults)
+  console.log("here")
+}
 </script>
 
 <template>
@@ -135,6 +141,9 @@ const invertRatio = ref(false); // checkbox state
         </div>
       </div>
     </div>
+  </div>
+  <div class="reset-chars" @click="resetCharacters">
+    <a href="">Reset levels</a>
   </div>
 </template>
 
@@ -334,5 +343,10 @@ const invertRatio = ref(false); // checkbox state
   border: 1px solid #ccc;
   border-radius: 4px;
   padding: 0.25rem;
+}
+
+.reset-chars {
+  text-align: center;
+  margin-top: 4em;
 }
 </style>
