@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, watch, ref } from "vue";
+import { reactive, watch, ref, computed } from "vue";
 
 function getDefault() {
   return [
@@ -64,7 +64,6 @@ function pickRandomCharacter() {
     return Array(Math.max(1, weight)).fill(char);
   });
 
-  console.log(weightedPool)
   if (weightedPool.length === 0) {
     selectedCharacter.value = null;
     return;
@@ -94,10 +93,31 @@ function pickRandomCharacter() {
 
 const invertRatio = ref(false); // checkbox state
 
+const characterProbabilities = computed(() => {
+  const maxLevel = Math.max(...characters.map((c) => c.level))
+  const weights = characters.map((char) => {
+    if (char.level === 0 && !invertRatio.value) return 0
+    let weight = char.level
+    if (invertRatio.value) {
+      weight = maxLevel - char.level + 1
+    }
+    return Math.max(1, weight)
+  })
+  const total = weights.reduce((a, b) => a + b, 0)
+  return characters.map((char, i) => ({
+    name: char.name,
+    percent: total > 0 ? Math.ceil((weights[i] / total) * 100) : 1,
+  }))
+})
+
+function getCharPercent(name) {
+  const found = characterProbabilities.value.find(c => c.name === name)
+  return found ? found.percent : "0.0"
+}
+
 function resetCharacters() {
   const defaults = getDefault()
   characters.splice(0, characters.length, ...defaults)
-  console.log("here")
 }
 </script>
 
@@ -130,7 +150,8 @@ function resetCharacters() {
       }"></div>
       <div class="card-items">
         <div class="name">
-          {{ char.name }}
+          <span class="char-name">{{ char.name }}</span>
+          <span class="char-percent">{{ getCharPercent(char.name) }}%</span>
         </div>
         <div class="controls-container">
           <div class="controls">
@@ -234,6 +255,7 @@ function resetCharacters() {
 .parallelogram-left .name {
   text-align: right;
   margin-right: 8px;
+  color: var(--vp-c-white);
 }
 
 .character-list {
@@ -251,6 +273,8 @@ function resetCharacters() {
   margin-bottom: 4px;
   border-radius: 5px;
   overflow: hidden;
+  color: var(--vp-c-white);
+  border-color: var(--vp-c-white);;
 }
 
 .char-background {
@@ -291,6 +315,21 @@ function resetCharacters() {
 .name {
   margin-left: 8px;
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+  font-size: 1.2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 180px; /* roughly card width minus padding */
+}
+
+.char-name {
+  flex: 1;
+}
+
+.char-percent {
+  text-align: right;
+  opacity: 0.8;
+  font-size: 0.9rem;
 }
 
 .controls-container {
@@ -319,12 +358,10 @@ function resetCharacters() {
 }
 
 .controls {
-  /* transform: skew(20deg); Undo skew for inner content */
   display: flex;
-  justify-content: space-between;
+  justify-content: space-evenly;
   align-items: center;
   width: 100%;
-  padding: 0 1rem;
   margin-top: 4px;
   margin-bottom: 4px;
 }
@@ -332,7 +369,8 @@ function resetCharacters() {
 .controls button {
   font-size: 1.5rem;
   padding: 0.5rem 1rem;
-  border: 2px solid var(--vp-c-text-1);
+  border-width: 2px;
+  border-style: solid;
   border-radius: 4px;
   cursor: pointer;
 }
@@ -340,8 +378,7 @@ function resetCharacters() {
 .controls span,
 .controls input {
   font-size: 1.25rem;
-  margin: 0 1rem;
-  min-width: 40px;
+  width: 4ch;
   text-align: center;
   background: none;
   border: none;
@@ -350,11 +387,10 @@ function resetCharacters() {
 .controls input {
   border: 1px solid #ccc;
   border-radius: 4px;
-  padding: 0.25rem;
 }
 
 .reset-chars {
   text-align: center;
-  margin-top: 4em;
+  margin-top: 4rem;
 }
 </style>
