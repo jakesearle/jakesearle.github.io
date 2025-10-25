@@ -7,6 +7,7 @@ function getDefault() {
     { type: "fire", name: "Loxodont", level: 0, editing: false },
     { type: "fire", name: "Clairen", level: 0, editing: false },
     { type: "fire", name: "Zetterburn", level: 0, editing: false },
+    { type: "earth", name: "Galvan", level: 0, editing: false },
     { type: "earth", name: "Olympia", level: 0, editing: false },
     { type: "earth", name: "Maypul", level: 0, editing: false },
     { type: "earth", name: "Kragg", level: 0, editing: false },
@@ -63,16 +64,23 @@ function pickRandomCharacter() {
     return Array(Math.max(1, weight)).fill(char);
   });
 
+  console.log(weightedPool)
   if (weightedPool.length === 0) {
     selectedCharacter.value = null;
     return;
   }
 
   let flashCount = 0;
+  let previousChar = null;
   flashingInterval = setInterval(() => {
-    const randomChar =
-      characters[Math.floor(Math.random() * characters.length)];
+    let randomChar;
+    // keep picking until it's different from the previous
+    do {
+      randomChar = characters[Math.floor(Math.random() * characters.length)];
+    } while (randomChar === previousChar && characters.length > 1);
+
     selectedCharacter.value = randomChar;
+    previousChar = randomChar;
     flashCount++;
 
     if (flashCount > 5) {
