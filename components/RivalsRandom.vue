@@ -11,6 +11,7 @@ function getDefault() {
     { type: "earth", name: "Olympia", level: 0, editing: false },
     { type: "earth", name: "Maypul", level: 0, editing: false },
     { type: "earth", name: "Kragg", level: 0, editing: false },
+    { type: "earth", name: "La Reina", level: 0, editing: false },
     { type: "air", name: "Wrastor", level: 0, editing: false },
     { type: "air", name: "Fleet", level: 0, editing: false },
     { type: "air", name: "Absa", level: 0, editing: false },
@@ -22,7 +23,11 @@ function getDefault() {
 
 // Load saved characters from localStorage if available
 const saved = localStorage.getItem("characters");
-const characters = reactive(saved ? JSON.parse(saved) : getDefault());
+var savedChars = saved ? JSON.parse(saved) : getDefault();
+if (savedChars.length !== getDefault().length) {
+  savedChars = getDefault()
+}
+const characters = reactive(savedChars);
 
 function increment(char) {
   char.level++;
@@ -128,7 +133,7 @@ function resetCharacters() {
     </div>
     <div v-if="selectedCharacter" class="parallelogram-left" :class="`${selectedCharacter.type}`">
       <div class="selected-char-background" :style="{
-        backgroundImage: `url(/images/${selectedCharacter.name}-2D.png)`,
+        backgroundImage: `url(/images/${selectedCharacter.name.replace(/ /g,'')}-2D.png)`,
       }"></div>
       <div class="card-items">
         <div class="name">
@@ -146,7 +151,7 @@ function resetCharacters() {
   <div class="character-list">
     <div v-for="char in characters" :key="char.name" class="parallelogram" :class="`${char.type}`">
       <div class="char-background" :style="{
-        backgroundImage: `url(/images/${char.name}-2D.png)`,
+        backgroundImage: `url(/images/${char.name.replace(/ /g,'')}-2D.png)`,
       }"></div>
       <div class="card-items">
         <div class="name">
