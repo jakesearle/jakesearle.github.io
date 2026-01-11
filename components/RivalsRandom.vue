@@ -3,14 +3,14 @@ import { reactive, watch, ref, computed } from "vue";
 
 function getDefault() {
   return [
-    { type: "fire", name: "Forsburn", level: 0, editing: false },
-    { type: "fire", name: "Loxodont", level: 0, editing: false },
-    { type: "fire", name: "Clairen", level: 0, editing: false },
     { type: "fire", name: "Zetterburn", level: 0, editing: false },
-    { type: "earth", name: "Galvan", level: 0, editing: false },
-    { type: "earth", name: "Olympia", level: 0, editing: false },
-    { type: "earth", name: "Maypul", level: 0, editing: false },
+    { type: "fire", name: "Clairen", level: 0, editing: false },
+    { type: "fire", name: "Loxodont", level: 0, editing: false },
+    { type: "fire", name: "Forsburn", level: 0, editing: false },
     { type: "earth", name: "Kragg", level: 0, editing: false },
+    { type: "earth", name: "Maypul", level: 0, editing: false },
+    { type: "earth", name: "Olympia", level: 0, editing: false },
+    { type: "earth", name: "Galvan", level: 0, editing: false },
     { type: "earth", name: "La Reina", level: 0, editing: false },
     { type: "air", name: "Wrastor", level: 0, editing: false },
     { type: "air", name: "Fleet", level: 0, editing: false },
