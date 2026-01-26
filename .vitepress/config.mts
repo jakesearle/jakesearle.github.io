@@ -9,7 +9,8 @@ export default defineConfig({
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Rivals 2', link: '/rivals' }
+      { text: 'Rivals 2', link: '/rivals' },
+      { text: 'Crochet', link: '/crochet' }
     ],
     socialLinks: [
       { icon: 'github', link: 'https://https://github.com/jakesearle' }
