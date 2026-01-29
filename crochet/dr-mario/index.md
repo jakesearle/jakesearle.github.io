@@ -102,7 +102,7 @@ In orange, do a pair of [dot embroidery eyes](https://youtu.be/pa4h9g2N6ts) for 
 
 ### Body
 
-* [Like most of my projects](./better-spheres.md), I like to alternate where I put my increases and decreases to avoid having these spheres have a hexagonal shape. This is inspired by the way [Okla Novytska writes her patterns](https://www.ravelry.com/patterns/library/nativity-minis-joseph-mary-jesus-lamb). A quick example is that for a row where the instruction is something like: `3[4sc, inc]`, I like to instead do `3[2sc, inc, 2sc]` (which you could also write `2sc, inc, 2[4sc, inc], 2sc`). And I only do this on rows with instructions of `Nsc, inc` where N is even. Rows where N is odd I leave alone.
+* [Like most of my projects](../better-spheres), I like to alternate where I put my increases and decreases to avoid having these spheres have a hexagonal shape. This is inspired by the way [Okla Novytska writes her patterns](https://www.ravelry.com/patterns/library/nativity-minis-joseph-mary-jesus-lamb). A quick example is that for a row where the instruction is something like: `3[4sc, inc]`, I like to instead do `3[2sc, inc, 2sc]` (which you could also write `2sc, inc, 2[4sc, inc], 2sc`). And I only do this on rows with instructions of `Nsc, inc` where N is even. Rows where N is odd I leave alone.
 
 I did this for each of the virus' bodies.
 
