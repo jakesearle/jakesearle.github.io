@@ -1,12 +1,16 @@
 # Dr. Mario Viruses
 
-For mother's day this year, I wanted to crochet the viruses in this ["Dr. Mario and His Viruses" pattern](https://www.ravelry.com/patterns/library/dr-mario-and-his-viruses). I made a couple changes.
+![](./imgs/viruses.jpg)
 
-## I Hate Using Felt!
+My mom's favorite video game of all time is Dr. Mario for the Nintendo 64. We've spent quite a few hours playing that game, even prompting my grandparents to buy a Nintendo Switch just to play this game. So, for mom's birthday this year, I crocheted the viruses from this ["Dr. Mario and His Viruses" pattern](https://www.ravelry.com/patterns/library/dr-mario-and-his-viruses), and made a couple changes.
+
+## Felt-less Guide
 
 This is mostly just my bias, and because I don't really have felt at home, but I like avoiding felt in my projects. This is how I crocheted alternitives for the faces.
 
 ### Blue Virus
+
+![](./imgs/blue-virus.jpg)
 
 #### Eye Blacks (?)
 
@@ -19,7 +23,7 @@ Now, join the two circles together into a 8-shape
 * `sc` from the first circle back to the remainging stitch on the second circle, then `4inc` again 
 * Finish off
 
-![](./img/blue-virus-eyes.png)
+![](./imgs/blue-virus-eyes.png)
 
 Then, do [the standard embroidery eyes](https://youtu.be/0O7EM_nRuoQ) for the pupils. I find this easier to do *after* sewing on the eye background.
 
@@ -41,7 +45,7 @@ Sew tooth onto the mouth before sewing the mouth onto the body
 
 ### Red Virus
 
-![](./img/red-virus.png)
+![](./imgs/red-virus.png)
 
 #### Eye Hole/Mouth
 
@@ -64,7 +68,7 @@ In black, embroider a single black stitch for the tongue crease
 
 ### Yellow Virus
 
-![](./img/yellow-virus.png)
+![](./imgs/yellow-virus.png)
 
 This is where I departed the most from the instructions. I couldn't figure out how to make an eye shape that matched the felt instructions and so instead I decided to incorporate the cheeks and nose from the original design of the virus
 
@@ -92,13 +96,13 @@ In orange, do a pair of [dot embroidery eyes](https://youtu.be/pa4h9g2N6ts) for 
 
 [Optional] If you want, you could outline the mouth shape with a couple black embroidery stitches, but I didn't think it was necessary.
 
-![](./img/yellow-virus-face.png)
+![](./imgs/yellow-virus-face.png)
 
 ## Other Changes
 
 ### Body
 
-* [Like most of my projects](./better-spheres.md), I like to slightly alternate where I put my increases and decreases to avoid having these spheres have a hexagonal shape. This is inspired by the way [Okla Novytska writes her patterns](https://www.ravelry.com/patterns/library/nativity-minis-joseph-mary-jesus-lamb). A quick example is that for a row where the instruction is something like: `3[4sc, inc]`, I like to instead do `3[2sc, inc, 2sc]` (which you could also write `2sc, inc, 2[4sc, inc], 2sc`). And I only do this on rows with instructions of `Nsc, inc` where N is even. Rows where N is odd I leave alone.
+* [Like most of my projects](./better-spheres.md), I like to alternate where I put my increases and decreases to avoid having these spheres have a hexagonal shape. This is inspired by the way [Okla Novytska writes her patterns](https://www.ravelry.com/patterns/library/nativity-minis-joseph-mary-jesus-lamb). A quick example is that for a row where the instruction is something like: `3[4sc, inc]`, I like to instead do `3[2sc, inc, 2sc]` (which you could also write `2sc, inc, 2[4sc, inc], 2sc`). And I only do this on rows with instructions of `Nsc, inc` where N is even. Rows where N is odd I leave alone.
 
 I did this for each of the virus' bodies.
 

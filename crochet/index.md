@@ -4,4 +4,4 @@ List of my crochet projects
 
 ## Pattern Notes
 
-* [Dr. Mario Viruses](./dr-mario-viruses.md)
+* [Dr. Mario Viruses](./dr-mario)
