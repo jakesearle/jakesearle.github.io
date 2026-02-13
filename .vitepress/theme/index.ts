@@ -4,6 +4,7 @@ import type { Theme } from 'vitepress'
 import DefaultTheme from 'vitepress/theme'
 import './style.css'
 import CrochetWidget from '../../components/CrochetWidget.vue'
+import SpineWidget from '../../components/SpineWidget.vue'
 
 export default {
   extends: DefaultTheme,
@@ -14,5 +15,6 @@ export default {
   },
   enhanceApp({ app, router, siteData }) {
     app.component('CrochetWidget', CrochetWidget)
+    app.component('SpineWidget', SpineWidget)
   }
 } satisfies Theme
