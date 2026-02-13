@@ -1,4 +1,14 @@
-export function crochetInstructions(base: number, target: number): string {
+export function rowInstruction(base: number, target: number): string {
+    if (target >= base) {
+        return crochetIncInstructions(base, target)
+    }
+    const increaseVersion = crochetIncInstructions(target, base)
+    let result = increaseVersion.replace(/inc\b/g, "dec")
+    result = result.replace(/(\d+)sc in 1/g, "sc$1tog")
+    return result
+}
+
+export function crochetIncInstructions(base: number, target: number): string {
     if (target < base) {
         throw new Error("This script handles increases only");
     }

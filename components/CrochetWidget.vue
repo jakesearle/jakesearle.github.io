@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { crochetInstructions } from '../utils/crochet'
+import { crochetIncInstructions } from '../utils/crochet'
 
 const start = ref<number | null>(null)
 const end = ref<number | null>(null)
@@ -20,7 +20,7 @@ const result = computed(() => {
   }
 
   try {
-    return crochetInstructions(start.value, end.value)
+    return crochetIncInstructions(start.value, end.value)
   } catch (e) {
     return (e as Error).message
   }
