@@ -6,12 +6,10 @@
 
 ### Spine widget
 
-- [ ] Use the better single row function on the other widget
-
 - [ ] Other variants
-    - [ ] Basic circles
-    - [ ] "Leaf" version
     - [ ] "Whale" version
+    - [ ] "Leaf" version
+    - [ ] Basic circles
     - [ ] Circle coloring version
 
 UX things:
@@ -21,6 +19,7 @@ UX things:
 - [ ] ⏰ Stitch height vs. width
 - [ ] ⏰ Only inc into non-inc'ed stitches?
 
+- [X] Use the better single row function on the other widget
 - [X] Make the picture not interactable
 - [X] Orange line if slope too steep
 - [X] Green line if the same distance
