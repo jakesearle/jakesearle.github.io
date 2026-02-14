@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { crochetIncInstructions } from '../utils/crochet'
+import { rowInstruction } from '../utils/crochet'
 
 const start = ref<number | null>(null)
 const end = ref<number | null>(null)
@@ -15,12 +15,8 @@ const result = computed(() => {
     return ''
   }
 
-  if (end.value < start.value) {
-    return 'Result must be greater than start'
-  }
-
   try {
-    return crochetIncInstructions(start.value, end.value)
+    return `${rowInstruction(start.value, end.value)} (${end.value})`
   } catch (e) {
     return (e as Error).message
   }
