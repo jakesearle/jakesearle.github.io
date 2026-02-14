@@ -2,14 +2,12 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { rowInstruction } from '../utils/crochet'
 
-const minStitchesAround = 4
+const minStitchesAround = 2
 
 const imageUrl = ref<string | null>(null)
 const container = ref<HTMLDivElement | null>(null)
 const debugMode = ref(false)
-const overlayOpacity = ref(0.9) // default value
-
-// Spine endpoints
+const overlayOpacity = ref(0.6)
 const points = reactive([
     { x: 0.3, y: 0.3 },
     { x: 0.7, y: 0.7 }
@@ -34,7 +32,7 @@ const minRibDist = computed(() => {
     const dx = points[1].x - points[0].x
     const dy = points[1].y - points[0].y
     const length = Math.hypot(dx, dy)
-    const minDistanceCm = (minStitchesAround * stitchHeight.value) / (2 * Math.PI)
+    const minDistanceCm = (minStitchesAround * stitchHeight.value) / Math.PI
     return (minDistanceCm / spineLengthCm.value) * length
 })
 
@@ -239,14 +237,14 @@ function generateLeftStitchCounts(): number[] {
     const distances = getLeftArcDistancesCm()
     if (distances.length === 0) return []
 
-    return distances.map(r => Math.max(1, Math.round((2 * Math.PI * r) / stitchHeight.value)))
+    return distances.map(r => Math.max(1, Math.round((Math.PI * r) / stitchHeight.value))) // Divide in half for each half
 }
 
 function generateRightStitchCounts(): number[] {
     const distances = getRightArcDistancesCm()
     if (distances.length === 0) return []
 
-    return distances.map(r => Math.max(1, Math.round((2 * Math.PI * r) / stitchHeight.value)))
+    return distances.map(r => Math.max(1, Math.round((Math.PI * r) / stitchHeight.value))) // Divide in half for each half
 }
 
 const crochetRows = computed(() => {
@@ -365,7 +363,7 @@ const debugTable = computed(() => {
                 <circle v-for="(p, i) in rightArcPoints" :key="'arc-' + i" :cx="p.x" :cy="p.y" r="0.01"
                     stroke="var(--vp-c-brand-1)" stroke-width="0.002" @pointerdown="startArcDrag(i, $event, 'right')"
                     style="cursor: ew-resize" :fill="rightArcOffsets[i] <= minRibDist ? 'red' : 'white'" />
-                    
+
                 <!-- Arc -->
                 <line v-for="(p, i) in leftArcPoints.slice(1)" :key="i" :x1="leftArcPoints[i].x"
                     :y1="leftArcPoints[i].y" :x2="p.x" :y2="p.y" :stroke="getSegmentColor(i, 'left')"
@@ -549,5 +547,11 @@ circle {
 .debug-table th {
     background-color: var(--vp-c-bg-soft);
     color: var(--vp-c-text-2);
+}
+
+@media print {
+    .instructions {
+        break-before: page;
+    }
 }
 </style>
