@@ -1,27 +1,32 @@
 # TODO
 
+[VITEPRESS THEME COLORS](https://github.com/vuejs/vitepress/blob/main/src/client/theme-default/styles/vars.css)
+
 ## to-do
 
 ### Spine widget
 
-- [ ] starting stitches
-- [ ] transparency
-
-UX things:
-- [ ] Arrowed ends
-- [ ] Open/closed ends
-- [ ] Starting and ending instructions
-
-- [ ] Should I move freeby stitch to the start?
-- [ ] Make the picture not interactable
-- [ ] ⏰ Stitch height vs. width
-- [ ] ⏰ Only inc into non-inc'ed stitches?
+- [ ] Use the better single row function on the other widget
 
 - [ ] Other variants
     - [ ] Basic circles
     - [ ] "Leaf" version
     - [ ] "Whale" version
+    - [ ] Circle coloring version
 
+UX things:
+- [ ] Arrowed ends
+- [ ] Open/closed ends
+- [ ] Starting and ending instructions
+- [ ] ⏰ Stitch height vs. width
+- [ ] ⏰ Only inc into non-inc'ed stitches?
+
+- [X] Make the picture not interactable
+- [X] Orange line if slope too steep
+- [X] Green line if the same distance
+- [X] Should I move freeby stitch to the start?
+- [X] transparency
+- [X] starting stitches
 - [X] Stuff instructions
 - [X] Debugging chart (Relative sizes, cm sizes, stitches, instructions)
 - [X] Set minimum rib distance
