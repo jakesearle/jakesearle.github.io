@@ -6,6 +6,7 @@ List of my crochet projects
 
 * [Single Row](./tools/row-change-calc.md)
 * [Vase Tool](./tools/spine-test.md)
+* [Whale Tool](./tools/whale-tool.md)
 
 ## Pattern Notes
 

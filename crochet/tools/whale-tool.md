@@ -1,0 +1,3 @@
+# Whale Tool
+
+<DualSpineWidget />
