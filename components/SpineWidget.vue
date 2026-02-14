@@ -7,6 +7,7 @@ const minStitchesAround = 4
 const imageUrl = ref<string | null>(null)
 const container = ref<HTMLDivElement | null>(null)
 const debugMode = ref(false)
+const overlayOpacity = ref(0.9) // default value
 
 // Spine endpoints
 const points = reactive([
@@ -54,7 +55,6 @@ watch(segments, (newVal) => {
     initArcOffsets()
 })
 
-// Upload image
 function handleUpload(e: Event) {
     const file = (e.target as HTMLInputElement).files?.[0]
     if (!file) return
@@ -63,7 +63,6 @@ function handleUpload(e: Event) {
     reader.readAsDataURL(file)
 }
 
-// Spine drag
 function startSpineDrag(index: number, e: PointerEvent) {
     e.preventDefault()
     draggingSpineIndex.value = index
@@ -74,11 +73,11 @@ function stopDrag() {
     draggingArcIndex.value = null
 }
 
-// Arc drag
 function startArcDrag(index: number, e: PointerEvent) {
     e.preventDefault()
     draggingArcIndex.value = index
 }
+
 function handlePointerMove(e: PointerEvent) {
     if (!container.value) return
     const rect = container.value.getBoundingClientRect()
@@ -143,6 +142,23 @@ function getArcDistancesCm(): number[] {
     return arcOffsets.map(o => Math.abs(o) * scale)
 }
 
+const stitchCounts = computed(() => {
+    return generateStitchCounts()
+})
+
+function getSegmentColor(i: number) {
+    const base = stitchCounts.value[i]
+    const next = stitchCounts.value[i + 1]
+    if (!(base && next)) return 'var(--vp-c-note-1)'
+
+    if (next / base > 2 || base / next > 2) return 'var(--vp-c-danger-1)'
+    const diff = Math.abs(base - next)
+    if (diff === 0) return 'var(--vp-c-note-3)'
+    if (diff === 1) return 'var(--vp-c-warning-1)'
+
+    return 'var(--vp-c-note-1)'
+}
+
 function generateStitchCounts(): number[] {
     const distances = getArcDistancesCm()
     if (distances.length === 0) return []
@@ -158,12 +174,14 @@ const crochetRows = computed(() => {
     for (let i = 1; i < stitchCounts.length; i++) {
         const prev = stitchCounts[i - 1]
         const curr = stitchCounts[i]
+        if (i === 1) {
+            rows.push(`0: ${prev} stitches`)
+        }
         if (prev >= (max / 2) && curr <= (max / 2)) {
             rows.push("  Stuff object")
         }
         rows.push(`${i}: ${rowInstruction(prev, curr)} (${curr})`)
     }
-
     return rows
 })
 
@@ -196,6 +214,12 @@ const debugTable = computed(() => {
                     <input type="number" step="0.1" v-model.number="spineLengthCm" placeholder="6" />
                 </label>
             </div>
+            <div class="slider">
+                <label>
+                    Overlay Opacity: {{ overlayOpacity.toFixed(2) }}
+                </label>
+                <input type="range" min="0" max="1" step="0.01" v-model.number="overlayOpacity" />
+            </div>
             <label class="checkbox">
                 <input type="checkbox" v-model="debugMode" /> Debug Mode
             </label>
@@ -205,13 +229,13 @@ const debugTable = computed(() => {
             @pointerup="stopDrag" @pointerleave="stopDrag">
             <img :src="imageUrl" />
 
-            <svg class="overlay" viewBox="0 0 1 1">
+            <svg class="overlay" viewBox="0 0 1 1" :style="{ opacity: overlayOpacity }">
 
                 <!-- Ribs -->
                 <line v-for="(p, i) in arcPoints" :key="'ref-' + i"
                     :x1="points[0].x + (points[1].x - points[0].x) * (i / segments)"
-                    :y1="points[0].y + (points[1].y - points[0].y) * (i / segments)" :x2="p.x" :y2="p.y" stroke="orange"
-                    stroke-width="0.005" />
+                    :y1="points[0].y + (points[1].y - points[0].y) * (i / segments)" :x2="p.x" :y2="p.y"
+                    stroke="var(--vp-c-brand-1)" stroke-width="0.005" />
 
                 <!-- Spine -->
                 <line :x1="points[0].x" :y1="points[0].y" :x2="points[1].x" :y2="points[1].y"
@@ -223,13 +247,13 @@ const debugTable = computed(() => {
                     style="cursor: grab" />
 
                 <!-- Arc -->
-                <polyline v-if="arcPoints.length" :points="arcPoints.map(p => `${p.x},${p.y}`).join(' ')" fill="none"
-                    stroke="orange" stroke-width="0.005" />
+                <line v-for="(p, i) in arcPoints.slice(1)" :key="i" :x1="arcPoints[i].x" :y1="arcPoints[i].y" :x2="p.x"
+                    :y2="p.y" :stroke="getSegmentColor(i)" stroke-width="0.005" />
 
                 <!-- Arc points -->
-                <circle v-for="(p, i) in arcPoints" :key="'arc-' + i" :cx="p.x" :cy="p.y" r="0.01" stroke="orange"
-                    stroke-width="0.005" @pointerdown="startArcDrag(i, $event)" style="cursor: ew-resize"
-                    :fill="arcOffsets[i] <= minRibDist ? 'red' : 'white'" />
+                <circle v-for="(p, i) in arcPoints" :key="'arc-' + i" :cx="p.x" :cy="p.y" r="0.01"
+                    stroke="var(--vp-c-brand-1)" stroke-width="0.005" @pointerdown="startArcDrag(i, $event)"
+                    style="cursor: ew-resize" :fill="arcOffsets[i] <= minRibDist ? 'red' : 'white'" />
 
 
             </svg>
@@ -293,6 +317,11 @@ const debugTable = computed(() => {
     box-shadow: 0 0 0 2px var(--vp-c-brand-soft);
 }
 
+.slider {
+    display: flex;
+    flex-direction: column;
+}
+
 .computed {
     font-weight: 600;
     color: var(--vp-c-brand-1);
@@ -318,6 +347,14 @@ input[type="file"] {
     display: block;
     border-radius: 12px;
     border: 1px solid var(--vp-c-border);
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+    /* Safari */
+    -moz-user-select: none;
+    /* Firefox */
+    -ms-user-select: none;
+    /* old Edge */
 }
 
 .overlay {
@@ -326,6 +363,7 @@ input[type="file"] {
     width: 100%;
     height: 100%;
     pointer-events: none;
+    transition: opacity 0.15s ease;
 }
 
 circle {
