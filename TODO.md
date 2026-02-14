@@ -6,6 +6,8 @@
 
 ### Spine widget
 
+- [ ] Plus/Minus buttons that increment in multiples of the stitch height
+
 - [ ] Other variants
     - [ ] "Whale" version
     - [ ] "Leaf" version
