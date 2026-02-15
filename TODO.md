@@ -9,8 +9,8 @@
 - [ ] Plus/Minus buttons that increment in multiples of the stitch height
 
 - [ ] Other variants
-    - [ ] "Whale" version
-    - [ ] "Leaf" version
+    - [X] "Whale" version
+    - [X] "Leaf" version
     - [ ] Basic circles
     - [ ] Circle coloring version
 

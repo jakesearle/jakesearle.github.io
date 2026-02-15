@@ -6,6 +6,7 @@ import './style.css'
 import CrochetWidget from '../../components/CrochetWidget.vue'
 import SpineWidget from '../../components/SpineWidget.vue'
 import DualSpineWidget from '../../components/DualSpineWidget.vue'
+import FlatSpineWidget from '../../components/FlatSpineWidget.vue'
 
 export default {
   extends: DefaultTheme,
@@ -18,5 +19,6 @@ export default {
     app.component('CrochetWidget', CrochetWidget)
     app.component('SpineWidget', SpineWidget)
     app.component('DualSpineWidget', DualSpineWidget)
+    app.component('FlatSpineWidget', FlatSpineWidget)
   }
 } satisfies Theme
