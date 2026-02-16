@@ -11,6 +11,8 @@
 - [ ] Other variants
     - [X] "Whale" version
     - [X] "Leaf" version
+    - [ ] Skeleton tool
+    - [ ] Instruction verifyer
     - [ ] Basic circles
     - [ ] Circle coloring version
 
