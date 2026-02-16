@@ -1,0 +1,3 @@
+# Skeleton Tool
+
+<SkeletonWidget />
