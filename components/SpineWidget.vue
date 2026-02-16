@@ -214,6 +214,24 @@ const debugTable = computed(() => {
                     <input type="number" step="0.1" v-model.number="spineLengthCm" placeholder="6" />
                 </label>
             </div>
+            <div class="text-boxes">
+                <label class="text-box">
+                    x1
+                    <input type="number" step="0.001" min="0" max="1" v-model.number="points[0].x" />
+                </label>
+                <label class="text-box">
+                    y1
+                    <input type="number" step="0.001" min="0" max="1" v-model.number="points[0].y" />
+                </label>
+                <label class="text-box">
+                    x2
+                    <input type="number" step="0.001" min="0" max="1" v-model.number="points[1].x" />
+                </label>
+                <label class="text-box">
+                    y2
+                    <input type="number" step="0.001" min="0" max="1" v-model.number="points[1].y" />
+                </label>
+            </div>
             <div class="slider">
                 <label>
                     Overlay Opacity: {{ overlayOpacity.toFixed(2) }}

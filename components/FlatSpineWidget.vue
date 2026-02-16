@@ -5,7 +5,7 @@ import { rowInstruction } from '../utils/crochet'
 // This looks weird, but it's because there's a guarenteed "edge" stitch (one per side)
 // And If I want the minimum all the way around to be 4, that leaves 1 "real" stitch per side, but since
 // the model is automatically doubling this stitch (for front and back), that's why this is set to 0.5
-const minStitchesAround = 0.5 
+const minStitchesAround = 0.5
 
 const imageUrl = ref<string | null>(null)
 const container = ref<HTMLDivElement | null>(null)
@@ -318,6 +318,24 @@ const debugTable = computed(() => {
                 <label class="text-box">
                     Spine length (cm)
                     <input type="number" step="0.1" v-model.number="spineLengthCm" placeholder="6" />
+                </label>
+            </div>
+            <div class="text-boxes">
+                <label class="text-box">
+                    x1
+                    <input type="number" step="0.001" min="0" max="1" v-model.number="points[0].x" />
+                </label>
+                <label class="text-box">
+                    y1
+                    <input type="number" step="0.001" min="0" max="1" v-model.number="points[0].y" />
+                </label>
+                <label class="text-box">
+                    x2
+                    <input type="number" step="0.001" min="0" max="1" v-model.number="points[1].x" />
+                </label>
+                <label class="text-box">
+                    y2
+                    <input type="number" step="0.001" min="0" max="1" v-model.number="points[1].y" />
                 </label>
             </div>
             <div class="slider">
