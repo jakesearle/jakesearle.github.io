@@ -98,8 +98,20 @@ function getLengthCm(index: number) {
         <div class="controls">
             <div class="line-output">
                 <label class="text-box">
-                    Spine Coords
-                    <textarea readonly :value="mainSpine" class="json-output"></textarea>
+                    x1
+                    <input type="number" step="0.001" min="0" max="1" v-model.number="lines[0][0].x" />
+                </label>
+                <label class="text-box">
+                    y1
+                    <input type="number" step="0.001" min="0" max="1" v-model.number="lines[0][0].y" />
+                </label>
+                <label class="text-box">
+                    x2
+                    <input type="number" step="0.001" min="0" max="1" v-model.number="lines[0][1].x" />
+                </label>
+                <label class="text-box">
+                    y2
+                    <input type="number" step="0.001" min="0" max="1" v-model.number="lines[0][1].y" />
                 </label>
                 <label class="text-box">
                     Spine length (cm)
@@ -107,15 +119,28 @@ function getLengthCm(index: number) {
                 </label>
             </div>
             <div v-for="(line, index) in lines.slice(1)" :key="index" class="line-output">
-                <label class="text-box">
-                    Spine Coords
-                    <textarea readonly :value="line2String(line)" class="json-output"></textarea>
-                </label>
-
-                <label class="text-box">
-                    Spine length (cm)
-                    <input type="number" :value="getLengthCm(index + 1).toFixed(1)" readonly />
-                </label>
+                <div class="text-boxes">
+                    <label class="text-box">
+                        x1
+                        <input type="number" step="0.001" min="0" max="1" v-model.number="line[0].x" />
+                    </label>
+                    <label class="text-box">
+                        y1
+                        <input type="number" step="0.001" min="0" max="1" v-model.number="line[0].y" />
+                    </label>
+                    <label class="text-box">
+                        x2
+                        <input type="number" step="0.001" min="0" max="1" v-model.number="line[1].x" />
+                    </label>
+                    <label class="text-box">
+                        y2
+                        <input type="number" step="0.001" min="0" max="1" v-model.number="line[1].y" />
+                    </label>
+                    <label class="text-box">
+                        Spine length (cm)
+                        <input type="number" :value="getLengthCm(index + 1).toFixed(1)" readonly />
+                    </label>
+                </div>
             </div>
             <div class="spine-controls">
                 <button @click="addSpine">
@@ -169,6 +194,14 @@ function getLengthCm(index: number) {
     padding: 0.5rem;
     width: 400px;
     height: 40px;
+}
+
+.controls .text-boxes {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
 }
 
 .controls .text-box input {
