@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 
 const imageUrl = ref<string | null>(null)
 const container = ref<HTMLDivElement | null>(null)
@@ -12,6 +12,40 @@ const draggingSpinePoint = ref<{
     lineIndex: number
     pointIndex: number
 } | null>(null)
+
+const STORAGE_KEY = "skeleton-tool-save"
+
+watch(
+    () => ({
+        lines,
+        spineLengthCm: spineLengthCm.value,
+    }),
+    (data) => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    },
+    { deep: true }
+)
+
+onMounted(() => {
+    const saved = localStorage.getItem(STORAGE_KEY)
+
+    if (!saved) return
+
+    try {
+        const parsed = JSON.parse(saved)
+
+        if (parsed.lines) {
+            lines.splice(0, lines.length, ...parsed.lines)
+        }
+
+        if (parsed.spineLengthCm) {
+            spineLengthCm.value = parsed.spineLengthCm
+        }
+
+    } catch (e) {
+        console.warn("Failed to load skeleton save")
+    }
+})
 
 function handleUpload(e: Event) {
     const file = (e.target as HTMLInputElement).files?.[0]
