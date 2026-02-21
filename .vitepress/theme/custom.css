@@ -1,0 +1,10 @@
+@media print {
+    img {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .aside-container {
+        display: none;
+    }
+}

@@ -8,6 +8,7 @@ import SpineWidget from '../../components/SpineWidget.vue'
 import DualSpineWidget from '../../components/DualSpineWidget.vue'
 import FlatSpineWidget from '../../components/FlatSpineWidget.vue'
 import SkeletonWidget from '../../components/SkeletonWidget.vue'
+import './custom.css'
 
 export default {
   extends: DefaultTheme,
