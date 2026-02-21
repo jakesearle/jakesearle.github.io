@@ -37,4 +37,5 @@ UX things:
 ### Other things
 
 * Crochet-dex: Show me all of the crochet projects for a certain pokemon
+    * https://www.ravelry.com/patterns/search#craft=crochet&pc=softies&query={{rotom}}&sort=popularity&view=captioned_thumbs&page=1
 * Rivals skin wishlist
