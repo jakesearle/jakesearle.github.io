@@ -149,11 +149,23 @@ Make 4
 
 ## Assembly
 
-Sew on legs in these positions
+Sew a circle on each front leg
 
-<!-- add pic -->
+![](./img/dot-on-leg.jpg)
 
-Attach them to the body here as well
+Sew on legs here. Put the front legs slightly behind the "smile" in the color changes. Put the back legs on at the same height, with only one stitch between them
+
+![](./img/leg-position.jpg)
+
+\[Optional\] Sew a single stitch between the leg and the inside of the body to have it stay in place better
+
+![](./img/leg-stitch.jpg)
+
+Sew the dorsal fin on, with the front of the fin lining up with the middle of the front legs
+
+![](./img/dorsal-placement.jpg)
+
+Embroider the eyes onto the eye detail: 4 black stitches, 3 yellow stitches, 1 more black stitch
 
 <!-- add pic -->
 
@@ -161,23 +173,11 @@ Sew on the eye details here
 
 <!-- add pic -->
 
-Sew a circle on each front leg
-
-<!-- add pic -->
-
 And a circle behind each back leg
 
 <!-- add pic -->
 
-Sew the dorsal fin on here
-
-<!-- add pic -->
-
-Embroider 4 toe beans, in pink, on each foot
-
-<!-- add pic -->
-
-Embroider the eyes: 4 black stitches, 3 yellow stitches, 1 more black stitch
+Embroider 4 toe beans, in pink, on each foot. I did three stitches
 
 <!-- add pic -->
 
