@@ -3,30 +3,32 @@ import { reactive, watch, ref, computed } from "vue";
 
 function getDefault() {
   return [
-    { type: "fire", name: "Zetterburn", level: 0, editing: false },
-    { type: "fire", name: "Clairen", level: 0, editing: false },
-    { type: "fire", name: "Loxodont", level: 0, editing: false },
-    { type: "fire", name: "Forsburn", level: 0, editing: false },
-    { type: "earth", name: "Kragg", level: 0, editing: false },
-    { type: "earth", name: "Maypul", level: 0, editing: false },
-    { type: "earth", name: "Olympia", level: 0, editing: false },
-    { type: "earth", name: "Galvan", level: 0, editing: false },
-    { type: "earth", name: "La Reina", level: 0, editing: false },
-    { type: "air", name: "Wrastor", level: 0, editing: false },
-    { type: "air", name: "Fleet", level: 0, editing: false },
-    { type: "air", name: "Absa", level: 0, editing: false },
-    { type: "water", name: "Ranno", level: 0, editing: false },
-    { type: "water", name: "Orcane", level: 0, editing: false },
-    { type: "water", name: "Etalus", level: 0, editing: false },
-  ]
+    { type: "fire", name: "Zetterburn", level: 0, editing: false, enabled: true },
+    { type: "fire", name: "Clairen", level: 0, editing: false, enabled: true },
+    { type: "fire", name: "Loxodont", level: 0, editing: false, enabled: true },
+    { type: "fire", name: "Forsburn", level: 0, editing: false, enabled: true },
+    { type: "earth", name: "Kragg", level: 0, editing: false, enabled: true },
+    { type: "earth", name: "Maypul", level: 0, editing: false, enabled: true },
+    { type: "earth", name: "Olympia", level: 0, editing: false, enabled: true },
+    { type: "earth", name: "Galvan", level: 0, editing: false, enabled: true },
+    { type: "earth", name: "La Reina", level: 0, editing: false, enabled: true },
+    { type: "air", name: "Wrastor", level: 0, editing: false, enabled: true },
+    { type: "air", name: "Fleet", level: 0, editing: false, enabled: true },
+    { type: "air", name: "Absa", level: 0, editing: false, enabled: true },
+    { type: "water", name: "Ranno", level: 0, editing: false, enabled: true },
+    { type: "water", name: "Orcane", level: 0, editing: false, enabled: true },
+    { type: "water", name: "Etalus", level: 0, editing: false, enabled: true },
+  ];
 }
 
-// Load saved characters from localStorage if available
 const saved = localStorage.getItem("characters");
 var savedChars = saved ? JSON.parse(saved) : getDefault();
 if (savedChars.length !== getDefault().length) {
-  savedChars = getDefault()
+  savedChars = getDefault();
 }
+// Backfill `enabled` for saves that predate this feature
+savedChars = savedChars.map((c) => ({ enabled: true, ...c }));
+
 const characters = reactive(savedChars);
 
 function increment(char) {
@@ -39,14 +41,18 @@ function decrement(char) {
   }
 }
 
+function toggleEnabled(char) {
+  char.enabled = !char.enabled;
+}
+
 watch(
   characters,
   (newVal) => {
-    // Strip reactive proxy and exclude "editing" from saved state if you want
-    const toSave = newVal.map(({ type, name, level }) => ({
+    const toSave = newVal.map(({ type, name, level, enabled }) => ({
       type,
       name,
       level,
+      enabled,
     }));
     localStorage.setItem("characters", JSON.stringify(toSave));
   },
@@ -55,17 +61,18 @@ watch(
 
 const selectedCharacter = ref(null);
 let flashingInterval = null;
+
 function pickRandomCharacter() {
-  const maxLevel = Math.max(...characters.map((c) => c.level));
+  const eligibleChars = characters.filter((c) => c.enabled);
 
-  const weightedPool = characters.flatMap((char) => {
+  const maxLevel = Math.max(...eligibleChars.map((c) => c.level), 0);
+
+  const weightedPool = eligibleChars.flatMap((char) => {
     if (char.level === 0 && !invertRatio.value) return [];
-
     let weight = char.level;
     if (invertRatio.value) {
-      weight = maxLevel - char.level + 1; // lower levels = higher weight
+      weight = maxLevel - char.level + 1;
     }
-
     return Array(Math.max(1, weight)).fill(char);
   });
 
@@ -76,12 +83,12 @@ function pickRandomCharacter() {
 
   let flashCount = 0;
   let previousChar = null;
+  clearInterval(flashingInterval);
   flashingInterval = setInterval(() => {
     let randomChar;
-    // keep picking until it's different from the previous
     do {
-      randomChar = characters[Math.floor(Math.random() * characters.length)];
-    } while (randomChar === previousChar && characters.length > 1);
+      randomChar = eligibleChars[Math.floor(Math.random() * eligibleChars.length)];
+    } while (randomChar === previousChar && eligibleChars.length > 1);
 
     selectedCharacter.value = randomChar;
     previousChar = randomChar;
@@ -89,40 +96,50 @@ function pickRandomCharacter() {
 
     if (flashCount > 5) {
       clearInterval(flashingInterval);
-      const finalChar =
-        weightedPool[Math.floor(Math.random() * weightedPool.length)];
+      const finalChar = weightedPool[Math.floor(Math.random() * weightedPool.length)];
       selectedCharacter.value = finalChar;
     }
   }, 75);
 }
 
-const invertRatio = ref(false); // checkbox state
+const invertRatio = ref(false);
 
 const characterProbabilities = computed(() => {
-  const maxLevel = Math.max(...characters.map((c) => c.level))
+  const eligibleChars = characters.filter((c) => c.enabled);
+  const maxLevel = Math.max(...eligibleChars.map((c) => c.level), 0);
   const weights = characters.map((char) => {
-    if (char.level === 0 && !invertRatio.value) return 0
-    let weight = char.level
+    if (!char.enabled) return 0;
+    if (char.level === 0 && !invertRatio.value) return 0;
+    let weight = char.level;
     if (invertRatio.value) {
-      weight = maxLevel - char.level + 1
+      weight = maxLevel - char.level + 1;
     }
-    return Math.max(1, weight)
-  })
-  const total = weights.reduce((a, b) => a + b, 0)
+    return Math.max(1, weight);
+  });
+  const total = weights.reduce((a, b) => a + b, 0);
   return characters.map((char, i) => ({
     name: char.name,
-    percent: total > 0 ? Math.ceil((weights[i] / total) * 100) : 1,
-  }))
-})
+    percent: total > 0 ? +((weights[i] / total) * 100).toFixed(1) : 0,
+  }));
+});
 
 function getCharPercent(name) {
-  const found = characterProbabilities.value.find(c => c.name === name)
-  return found ? found.percent : "0.0"
+  const found = characterProbabilities.value.find((c) => c.name === name);
+  return found ? found.percent : "0";
 }
 
 function resetCharacters() {
-  const defaults = getDefault()
-  characters.splice(0, characters.length, ...defaults)
+  const defaults = getDefault();
+  characters.splice(0, characters.length, ...defaults);
+}
+
+const cardRefs = ref({});
+
+function scrollToCharacter(char) {
+  const el = cardRefs.value[char.name];
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 }
 </script>
 
@@ -132,50 +149,79 @@ function resetCharacters() {
       <div class="question">?</div>
     </div>
     <div v-if="selectedCharacter" class="parallelogram-left" :class="`${selectedCharacter.type}`">
-      <div class="selected-char-background" :style="{
-        backgroundImage: `url(/images/${selectedCharacter.name.replace(/ /g,'')}-2D.png)`,
-      }"></div>
+      <div
+        class="selected-char-background"
+        :style="{
+          backgroundImage: `url(/images/${selectedCharacter.name.replace(/ /g, '')}-2D.png)`,
+        }"
+      ></div>
       <div class="card-items">
         <div class="name">
           {{ selectedCharacter.name }} ({{ selectedCharacter.level }})
         </div>
+        <button class="scroll-to-btn" @click="scrollToCharacter(selectedCharacter)" title="Scroll to character">↓</button>
       </div>
     </div>
   </div>
+
   <div class="randomizer-controls">
     <label>
       <input type="checkbox" v-model="invertRatio" />
       Invert probabilities
     </label>
   </div>
+
   <div class="character-list">
-    <div v-for="char in characters" :key="char.name" class="parallelogram" :class="`${char.type}`">
-      <div class="char-background" :style="{
-        backgroundImage: `url(/images/${char.name.replace(/ /g,'')}-2D.png)`,
-      }"></div>
+    <div
+      v-for="char in characters"
+      :key="char.name"
+      :ref="el => { if (el) cardRefs[char.name] = el }"
+      class="parallelogram"
+      :class="[`${char.type}`, { disabled: !char.enabled }]"
+    >
+      <div
+        class="char-background"
+        :style="{
+          backgroundImage: `url(/images/${char.name.replace(/ /g, '')}-2D.png)`,
+        }"
+      ></div>
       <div class="card-items">
         <div class="name">
           <span class="char-name">{{ char.name }}</span>
-          <span class="char-percent">{{ getCharPercent(char.name) }}%</span>
+          <span class="char-percent">{{ char.enabled ? `${getCharPercent(char.name)}%` : '—' }}</span>
+          <button
+            class="toggle-btn"
+            :class="{ 'toggle-btn--off': !char.enabled }"
+            @click="toggleEnabled(char)"
+            :title="char.enabled ? 'Exclude from randomizer' : 'Include in randomizer'"
+          >{{ char.enabled ? '✓' : '✗' }}</button>
         </div>
         <div class="controls-container">
           <div class="controls">
-            <button :style="{ visibility: char.level > 0 ? 'visible' : 'hidden' }" @click="decrement(char)">
-              −
-            </button>
+            <button
+              :style="{ visibility: char.level > 0 ? 'visible' : 'hidden' }"
+              @click="decrement(char)"
+              :disabled="!char.enabled"
+            >−</button>
 
             <span v-if="!char.editing" @click="char.editing = true">
               {{ char.level }}
             </span>
-            <input v-else v-model.number="char.level" @blur="char.editing = false" @keyup.enter="char.editing = false"
-              type="number" />
+            <input
+              v-else
+              v-model.number="char.level"
+              @blur="char.editing = false"
+              @keyup.enter="char.editing = false"
+              type="number"
+            />
 
-            <button @click="increment(char)">+</button>
+            <button @click="increment(char)" :disabled="!char.enabled">+</button>
           </div>
         </div>
       </div>
     </div>
   </div>
+
   <div class="reset-chars" @click="resetCharacters">
     <a href="">Reset levels</a>
   </div>
@@ -186,7 +232,6 @@ function resetCharacters() {
   display: flex;
   flex-direction: row;
   align-items: center;
-  /* justify-content: space-between; */
   margin-bottom: 8px;
   height: 200px;
 }
@@ -201,6 +246,7 @@ function resetCharacters() {
   border-radius: 5px;
   justify-content: center;
   align-items: center;
+  cursor: pointer;
 }
 
 .question {
@@ -222,21 +268,10 @@ function resetCharacters() {
   margin-left: -8%;
 }
 
-.parallelogram-left.fire {
-  background-color: #4e0415;
-}
-
-.parallelogram-left.earth {
-  background-color: #68b55d;
-}
-
-.parallelogram-left.air {
-  background-color: #fd9dfc;
-}
-
-.parallelogram-left.water {
-  background-color: #6473ce;
-}
+.parallelogram-left.fire  { background-color: #4e0415; }
+.parallelogram-left.earth { background-color: #68b55d; }
+.parallelogram-left.air   { background-color: #fd9dfc; }
+.parallelogram-left.water { background-color: #6473ce; }
 
 .selected-char-background {
   width: 90%;
@@ -255,11 +290,13 @@ function resetCharacters() {
   position: absolute;
   bottom: 0;
   right: 0;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .parallelogram-left .name {
   text-align: right;
-  margin-right: 8px;
+  /* margin-right: 8px; */
   color: var(--vp-c-white);
 }
 
@@ -279,37 +316,32 @@ function resetCharacters() {
   border-radius: 5px;
   overflow: hidden;
   color: var(--vp-c-white);
-  border-color: var(--vp-c-white);;
+  border-color: var(--vp-c-white);
+  position: relative;
+  transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+/* Disabled state: dim and desaturate the whole card */
+.parallelogram.disabled {
+  opacity: 0.4;
+  filter: grayscale(80%);
 }
 
 .char-background {
   transform: skew(20deg);
-  /* undo skew */
   width: 100%;
   height: 100%;
   background-size: cover;
   background-position: center;
   display: flex;
   color: white;
-  /* padding-bottom: 0.5rem; */
   position: absolute;
 }
 
-.parallelogram.fire {
-  background-color: #4e0415;
-}
-
-.parallelogram.earth {
-  background-color: #68b55d;
-}
-
-.parallelogram.air {
-  background-color: #fd9dfc;
-}
-
-.parallelogram.water {
-  background-color: #6473ce;
-}
+.parallelogram.fire  { background-color: #4e0415; }
+.parallelogram.earth { background-color: #68b55d; }
+.parallelogram.air   { background-color: #fd9dfc; }
+.parallelogram.water { background-color: #6473ce; }
 
 .card-items {
   position: absolute;
@@ -324,13 +356,11 @@ function resetCharacters() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  width: 180px; /* roughly card width minus padding */
+  /* width: 192px; */
+  gap: 4px;
 }
 
-.char-name {
-  flex: 1;
-}
-
+.char-name  { flex: 1; }
 .char-percent {
   text-align: right;
   opacity: 0.8;
@@ -344,29 +374,19 @@ function resetCharacters() {
   justify-content: center;
   border-bottom-left-radius: 5px;
   border-bottom-right-radius: 5px;
+  box-sizing: border-box;
 }
 
-.fire .controls-container {
-  background-color: #b72046;
-}
-
-.earth .controls-container {
-  background-color: #2a5325;
-}
-
-.air .controls-container {
-  background-color: #b174ba;
-}
-
-.water .controls-container {
-  background-color: #3a457b;
-}
+.fire  .controls-container { background-color: #b72046; }
+.earth .controls-container { background-color: #2a5325; }
+.air   .controls-container { background-color: #b174ba; }
+.water .controls-container { background-color: #3a457b; }
 
 .controls {
   display: flex;
   justify-content: space-evenly;
   align-items: center;
-  width: 100%;
+  flex: 1;
   margin-top: 4px;
   margin-bottom: 4px;
 }
@@ -378,6 +398,11 @@ function resetCharacters() {
   border-style: solid;
   border-radius: 4px;
   cursor: pointer;
+}
+
+.controls button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .controls span,
@@ -394,8 +419,59 @@ function resetCharacters() {
   border-radius: 4px;
 }
 
+/* Toggle button */
+.toggle-btn {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 0.7rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  line-height: 1;
+  padding: 0;
+  margin-right: 2px;
+  margin-bottom: 2px;
+}
+
+.toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.toggle-btn--off {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.5);
+}
+
 .reset-chars {
   text-align: center;
   margin-top: 4rem;
+}
+
+.scroll-to-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  transition: background 0.15s ease, transform 0.15s ease;
+  margin: 4px;
+}
+
+.scroll-to-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: translateY(2px);
 }
 </style>
