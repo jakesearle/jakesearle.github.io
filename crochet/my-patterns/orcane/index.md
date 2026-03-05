@@ -1,10 +1,49 @@
 # Orcane
 
+![](./img/orcane.jpg)
+
+Orcane is the lovable-trickster-orca-dog, who is a featured character in [Rivals of Aether 2](https://www.rivals2.com/), a game which I have been enjoying a lot lately. After seeing that a [plush of Orcane](https://www.symbiotestudios.com/products/orcane-plush-rivals-of-aether-official-collectible-rivals-2-dlc-code) that was released a few months ago came with an in-game yarn skin, I knew that I had to recreate it in crochet.
+
+![](./img/in-game.jpg)
+
+> Yes, I know the texture looks more knit than crochet, but I can't knit
+
 [[toc]]
+
+## Tools / Materials
+
+- Crochet hook size 4.0mm (US G/6): I like the [Clover Amour](https://www.clover-mfg.com/en/product/n1045/), which can be found at most local craft stores and Michael's
+- Scissors
+- Tapestry needle
+- Stitch marker
+- Stuffing: I like to use [polyester stuffing](https://www.michaels.com/product/the-original-polyfil-premium-fiber-fill-bag-20oz-10509852?michaelsStore=5500&inv=113), but scrap yarn and other materials work
+
+![](./img/tools.jpg)
 
 ## Yarn
 
-insert picture here
+Recommended: 4.0mm hook & worsted (4 / Medium) weight yarn
+
+Using the following tools and yarns, I ended up with a plush approximately 7 inches in length, 4 inches tall, and 4 inches wide (17cm x 10cm x 10cm). Use whichever size of yarn you'd like, but it may end up larger or smaller. For amigurumi, I like to use a hook one size/1mm smaller than suggested on the yarn in order to get tight stitches.
+
+![](./img/colors.jpg)
+
+I use the names of [Michael's Impeccable](https://www.michaels.com/product/impeccable-solid-yarn-by-loops-threads-M10108918) yarn line because it's the most widespread in the US, and it's easy to get a sense for what the color should look like. Of course, please support your [local yarn shops](https://takeayarnadventure.com/local-yarn-shop-database) if that's an option available to you.
+
+For body parts
+
+- White
+- Royal Blue - This is for the main palette for this skin. There are also 3 alternative palettes to try!
+- Soft Rose
+
+For sewing
+
+- Black
+- Butterscotch Yellow
+
+![](./img/css.jpeg)
+
+<!-- ![](./img/palettes.jpeg) -->
 
 ## Stitches
 
@@ -23,7 +62,18 @@ insert picture here
 | BLO\{X, Y, Z\}            | Back-loops only - Do the stitches "X, Y, Z" in back loops only                                                                                                                                                                                                              |
 | in same stitch\{X, Y, Z\} | Work each stitch "X, Y, Z" into the same stitch                                                                                                                                                                                                                             |
 
-## Body
+## Parts
+
+| \#  | Part                             |                                                                                                 |
+| --- | -------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 1x  | [Body](#body)                    | <input type="checkbox">                                                                         |
+| 2x  | [Front Legs](#front-legs)        | <input type="checkbox"> <input type="checkbox">                                                 |
+| 2x  | [Back Legs](#back-legs)          | <input type="checkbox"> <input type="checkbox">                                                 |
+| 1x  | [Dorsal Fin](#dorsal-fin)        | <input type="checkbox">                                                                         |
+| 2x  | [Eye Details](#eye-details)       | <input type="checkbox"> <input type="checkbox">                                                 |
+| 4x  | [Circle Details](#circle-details) | <input type="checkbox"> <input type="checkbox"> <input type="checkbox"> <input type="checkbox"> |
+
+### Body
 
 1. **In blue:** 6sc in a magic circle (6)
 2. **white:** 2sc, **blue:** inc, 2sc, inc
@@ -77,7 +127,7 @@ Starting from the stitches skipped in row 41:
 42b. 3[sc, dec] (6)\
 43b. sl st, finish off, and weave tail to close
 
-## Front Legs
+### Front Legs
 
 Make 2
 
@@ -85,7 +135,7 @@ Make 2
 2. **white:** 6inc (12)
 3. 2inc, 5[sc, inc] (19)
 4. BLO\{ 2[sc, inc, sc], 3sc \}, 4[ BLO\{ sc \}, bo ], BLO\{ 2sc \}
-   - When doing the bobble stitches, do them **through both loops**!
+   - When doing the bobble stitches, do them **through both loops**! These stitches will be the toes.
 5. 2[3sc, inc], 3[sc3tog], sc4tog (14)
 6. 2[2sc, inc, 2sc], 4sc (16)
 7. 2[5sc, inc], 2dec (16)
@@ -100,7 +150,7 @@ Make 2
 15. 2[sc, dec, sc] (6)
 16. sl st, finish off, and weave tail to close
 
-## Back Legs
+### Back Legs
 
 Make 2
 
@@ -122,7 +172,7 @@ Make 2
 14. 2[sc, dec, sc] (6)
 15. sl st, finish off, and weave tail to close
 
-## Dorsal Fin
+### Dorsal Fin
 
 1. **In blue:** 6sc in a magic circle (6)
 2. 2inc, 2[sc, inc] (10)
@@ -132,7 +182,7 @@ Make 2
 6. 9sc, inc, 5sc, dec (17)
 7. sl st and finish off, leaving a tail for sewing
 
-## Eye Details
+### Eye Details
 
 Make 2
 
@@ -140,7 +190,7 @@ Make 2
 2. inc, in same stitch\{sc, 2dc, sc\}, 2inc, in same stitch\{sc, 2dc, sc\}, inc
 3. sl st and finish off, leaving a tail for sewing
 
-## Circle Details
+### Circle Details
 
 Make 4
 
@@ -153,37 +203,51 @@ Sew a circle on each front leg
 
 ![](./img/dot-on-leg.jpg)
 
+---
+
 Sew on legs here. Put the front legs slightly behind the "smile" in the color changes. Put the back legs on at the same height, with only one stitch between them
 
 ![](./img/leg-position.jpg)
+
+---
 
 \[Optional\] Sew a single stitch between the leg and the inside of the body to have it stay in place better
 
 ![](./img/leg-stitch.jpg)
 
+---
+
 Sew the dorsal fin on, with the front of the fin lining up with the middle of the front legs
 
 ![](./img/dorsal-placement.jpg)
 
+---
+
+Sew a circle behind each back leg
+
+![](./img/sewn-dot.jpg)
+
+---
+
 Embroider the eyes onto the eye detail: 4 black stitches, 3 yellow stitches, 1 more black stitch
 
-<!-- add pic -->
+![](./img/embroidered-eye.jpg)
 
-Sew on the eye details here
+---
 
-<!-- add pic -->
+Sew on the eye details here. Leave a border of ~2 blue stitches between the eye and the mouth
 
-And a circle behind each back leg
+![](./img/sewn-eye.jpg)
 
-<!-- add pic -->
+---
 
-Embroider 4 toe beans, in pink, on each foot. I did three stitches
+Embroider 4 toe beans, in pink, on each foot. I did 3 stitches each
 
-<!-- add pic -->
+![](./img/embroidered-toes.jpg)
 
-## Footnotes
+<h2 id="footnotes">Footnotes</h2>
 
-### [1]
+<h3 id="_1">Footnotes</h3>
 
 Most amigurumi tends to slowly spiral over time, and this can vary with tension, hook size, yarn size, etc. To keep each half of a shape even, for me it works best to add this "bonus stitch" every 6 rows. If your tension is higher, you could do this more often (every 5 or 4 rows). If your tension is looser, you could do this less often (every 7 to 8 rows). If you have perfect tension, you can omit this entirely.
 
