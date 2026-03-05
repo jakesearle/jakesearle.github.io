@@ -1,5 +1,7 @@
 # Orcane
 
+<PrintButton />
+
 ![](./img/orcane.jpg)
 
 Orcane is the lovable-trickster-orca-dog, who is a featured character in [Rivals of Aether 2](https://www.rivals2.com/), a game which I have been enjoying a lot lately. After seeing that a [plush of Orcane](https://www.symbiotestudios.com/products/orcane-plush-rivals-of-aether-official-collectible-rivals-2-dlc-code) that was released a few months ago came with an in-game yarn skin, I knew that I had to recreate it in crochet.
@@ -10,7 +12,7 @@ Orcane is the lovable-trickster-orca-dog, who is a featured character in [Rivals
 
 [[toc]]
 
-## Tools / Materials
+## Tools & Materials
 
 - Crochet hook size 4.0mm (US G/6): I like the [Clover Amour](https://www.clover-mfg.com/en/product/n1045/), which can be found at most local craft stores and Michael's
 - Scissors
@@ -36,14 +38,12 @@ For body parts
 - Royal Blue - This is for the main palette for this skin. There are also 3 alternative palettes to try!
 - Soft Rose
 
-For sewing
+For sewing - You should only need a small amount of each. About 2 yards/meters.
 
 - Black
 - Butterscotch Yellow
 
 ![](./img/css.jpeg)
-
-<!-- ![](./img/palettes.jpeg) -->
 
 ## Stitches
 
@@ -62,14 +62,16 @@ For sewing
 | BLO\{X, Y, Z\}            | Back-loops only - Do the stitches "X, Y, Z" in back loops only                                                                                                                                                                                                              |
 | in same stitch\{X, Y, Z\} | Work each stitch "X, Y, Z" into the same stitch                                                                                                                                                                                                                             |
 
+These stitches are in [**American Notation**](https://en.wikipedia.org/wiki/List_of_crochet_stitches)
+
 ## Parts
 
-| \#  | Part                             |                                                                                                 |
-| --- | -------------------------------- | ----------------------------------------------------------------------------------------------- |
-| 1x  | [Body](#body)                    | <input type="checkbox">                                                                         |
-| 2x  | [Front Legs](#front-legs)        | <input type="checkbox"> <input type="checkbox">                                                 |
-| 2x  | [Back Legs](#back-legs)          | <input type="checkbox"> <input type="checkbox">                                                 |
-| 1x  | [Dorsal Fin](#dorsal-fin)        | <input type="checkbox">                                                                         |
+| \#  | Part                              |                                                                                                 |
+| --- | --------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 1x  | [Body](#body)                     | <input type="checkbox">                                                                         |
+| 2x  | [Front Legs](#front-legs)         | <input type="checkbox"> <input type="checkbox">                                                 |
+| 2x  | [Back Legs](#back-legs)           | <input type="checkbox"> <input type="checkbox">                                                 |
+| 1x  | [Dorsal Fin](#dorsal-fin)         | <input type="checkbox">                                                                         |
 | 2x  | [Eye Details](#eye-details)       | <input type="checkbox"> <input type="checkbox">                                                 |
 | 4x  | [Circle Details](#circle-details) | <input type="checkbox"> <input type="checkbox"> <input type="checkbox"> <input type="checkbox"> |
 
@@ -199,55 +201,79 @@ Make 4
 
 ## Assembly
 
+<figure>
 Sew a circle on each front leg
 
 ![](./img/dot-on-leg.jpg)
 
+</figure>
+
 ---
 
+<figure>
 Sew on legs here. Put the front legs slightly behind the "smile" in the color changes. Put the back legs on at the same height, with only one stitch between them
 
 ![](./img/leg-position.jpg)
 
+</figure>
+
 ---
 
-\[Optional\] Sew a single stitch between the leg and the inside of the body to have it stay in place better
+<figure>
+[Optional] Sew a single stitch between the leg and the inside of the body to have it stay in place better
 
 ![](./img/leg-stitch.jpg)
 
+</figure>
+
 ---
 
+<figure>
 Sew the dorsal fin on, with the front of the fin lining up with the middle of the front legs
 
 ![](./img/dorsal-placement.jpg)
 
+</figure>
+
 ---
 
+<figure>
 Sew a circle behind each back leg
 
 ![](./img/sewn-dot.jpg)
 
+</figure>
+
 ---
 
+<figure>
 Embroider the eyes onto the eye detail: 4 black stitches, 3 yellow stitches, 1 more black stitch
 
 ![](./img/embroidered-eye.jpg)
 
+</figure>
+
 ---
 
+<figure>
 Sew on the eye details here. Leave a border of ~2 blue stitches between the eye and the mouth
 
 ![](./img/sewn-eye.jpg)
 
+</figure>
+
 ---
 
+<figure>
 Embroider 4 toe beans, in pink, on each foot. I did 3 stitches each
 
 ![](./img/embroidered-toes.jpg)
 
+</figure>
+
 <h2 id="footnotes">Footnotes</h2>
 
-<h3 id="_1">Footnotes</h3>
+<h3 id="_1">[1]</h3>
 
 Most amigurumi tends to slowly spiral over time, and this can vary with tension, hook size, yarn size, etc. To keep each half of a shape even, for me it works best to add this "bonus stitch" every 6 rows. If your tension is higher, you could do this more often (every 5 or 4 rows). If your tension is looser, you could do this less often (every 7 to 8 rows). If you have perfect tension, you can omit this entirely.
 

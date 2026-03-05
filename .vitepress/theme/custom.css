@@ -1,14 +1,26 @@
 @media print {
-    main img {
-        break-inside: avoid;
-        page-break-inside: avoid;
-    }
-
     .aside-container {
         display: none;
     }
 
     .VPLocalNav {
         display: none;
+    }
+
+    .vp-doc img {
+        display: block;
+        break-inside: avoid;
+        break-before: auto;
+        break-after: avoid;
+        max-height: 3in;
+        width: auto;
+    }
+
+    .vp-doc p:has(img) {
+        break-inside: avoid;
+    }
+
+    .vp-doc figure {
+        break-inside: avoid;
     }
 }
