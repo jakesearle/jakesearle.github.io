@@ -59,22 +59,34 @@ watch(
   { deep: true }
 );
 
+const invertRatio = ref(false);
 const selectedCharacter = ref(null);
 let flashingInterval = null;
 
+// Returns scaled integer weights for eligible chars.
+// Normal:   weight = level (level-0 excluded unless all are 0)
+// Inverted: weight = 1 / (level + 1), scaled up to integers so ratios
+//           mirror normal mode in reverse.
+function computeScaledWeights(eligibleChars) {
+  const rawWeights = eligibleChars.map((char) => {
+    if (char.level === 0 && !invertRatio.value) return 0;
+    return invertRatio.value ? 1 / (char.level + 1) : char.level;
+  });
+
+  const positiveWeights = rawWeights.filter((w) => w > 0);
+  if (positiveWeights.length === 0) return rawWeights.map(() => 0);
+
+  const minWeight = Math.min(...positiveWeights);
+  return rawWeights.map((w) => (w === 0 ? 0 : Math.round(w / minWeight)));
+}
+
 function pickRandomCharacter() {
   const eligibleChars = characters.filter((c) => c.enabled);
+  const scaledWeights = computeScaledWeights(eligibleChars);
 
-  const maxLevel = Math.max(...eligibleChars.map((c) => c.level), 0);
-
-  const weightedPool = eligibleChars.flatMap((char) => {
-    if (char.level === 0 && !invertRatio.value) return [];
-    let weight = char.level;
-    if (invertRatio.value) {
-      weight = maxLevel - char.level + 1;
-    }
-    return Array(Math.max(1, weight)).fill(char);
-  });
+  const weightedPool = eligibleChars.flatMap((char, i) =>
+    Array(scaledWeights[i]).fill(char)
+  );
 
   if (weightedPool.length === 0) {
     selectedCharacter.value = null;
@@ -96,31 +108,27 @@ function pickRandomCharacter() {
 
     if (flashCount > 5) {
       clearInterval(flashingInterval);
-      const finalChar = weightedPool[Math.floor(Math.random() * weightedPool.length)];
-      selectedCharacter.value = finalChar;
+      selectedCharacter.value = weightedPool[Math.floor(Math.random() * weightedPool.length)];
     }
   }, 75);
 }
 
-const invertRatio = ref(false);
-
 const characterProbabilities = computed(() => {
   const eligibleChars = characters.filter((c) => c.enabled);
-  const maxLevel = Math.max(...eligibleChars.map((c) => c.level), 0);
-  const weights = characters.map((char) => {
-    if (!char.enabled) return 0;
-    if (char.level === 0 && !invertRatio.value) return 0;
-    let weight = char.level;
-    if (invertRatio.value) {
-      weight = maxLevel - char.level + 1;
-    }
-    return Math.max(1, weight);
+  const scaledWeights = computeScaledWeights(eligibleChars);
+
+  const weightMap = Object.fromEntries(
+    eligibleChars.map((char, i) => [char.name, scaledWeights[i]])
+  );
+  const total = scaledWeights.reduce((a, b) => a + b, 0);
+
+  return characters.map((char) => {
+    const w = weightMap[char.name] ?? 0;
+    return {
+      name: char.name,
+      percent: total > 0 ? +((w / total) * 100).toFixed(1) : 0,
+    };
   });
-  const total = weights.reduce((a, b) => a + b, 0);
-  return characters.map((char, i) => ({
-    name: char.name,
-    percent: total > 0 ? +((weights[i] / total) * 100).toFixed(1) : 0,
-  }));
 });
 
 function getCharPercent(name) {
@@ -149,17 +157,15 @@ function scrollToCharacter(char) {
       <div class="question">?</div>
     </div>
     <div v-if="selectedCharacter" class="parallelogram-left" :class="`${selectedCharacter.type}`">
-      <div
-        class="selected-char-background"
-        :style="{
-          backgroundImage: `url(/images/${selectedCharacter.name.replace(/ /g, '')}-2D.png)`,
-        }"
-      ></div>
+      <div class="selected-char-background" :style="{
+        backgroundImage: `url(/images/${selectedCharacter.name.replace(/ /g, '')}-2D.png)`,
+      }"></div>
       <div class="card-items">
         <div class="name">
           {{ selectedCharacter.name }} ({{ selectedCharacter.level }})
         </div>
-        <button class="scroll-to-btn" @click="scrollToCharacter(selectedCharacter)" title="Scroll to character">↓</button>
+        <button class="scroll-to-btn" @click="scrollToCharacter(selectedCharacter)"
+          title="Scroll to character">↓</button>
       </div>
     </div>
   </div>
@@ -172,48 +178,29 @@ function scrollToCharacter(char) {
   </div>
 
   <div class="character-list">
-    <div
-      v-for="char in characters"
-      :key="char.name"
-      :ref="el => { if (el) cardRefs[char.name] = el }"
-      class="parallelogram"
-      :class="[`${char.type}`, { disabled: !char.enabled }]"
-    >
-      <div
-        class="char-background"
-        :style="{
-          backgroundImage: `url(/images/${char.name.replace(/ /g, '')}-2D.png)`,
-        }"
-      ></div>
+    <div v-for="char in characters" :key="char.name" :ref="el => { if (el) cardRefs[char.name] = el }"
+      class="parallelogram" :class="[`${char.type}`, { disabled: !char.enabled }]">
+      <div class="char-background" :style="{
+        backgroundImage: `url(/images/${char.name.replace(/ /g, '')}-2D.png)`,
+      }"></div>
       <div class="card-items">
         <div class="name">
           <span class="char-name">{{ char.name }}</span>
           <span class="char-percent">{{ char.enabled ? `${getCharPercent(char.name)}%` : '—' }}</span>
-          <button
-            class="toggle-btn"
-            :class="{ 'toggle-btn--off': !char.enabled }"
-            @click="toggleEnabled(char)"
-            :title="char.enabled ? 'Exclude from randomizer' : 'Include in randomizer'"
-          >{{ char.enabled ? '✓' : '✗' }}</button>
+          <button class="toggle-btn" :class="{ 'toggle-btn--off': !char.enabled }" @click="toggleEnabled(char)"
+            :title="char.enabled ? 'Exclude from randomizer' : 'Include in randomizer'">{{ char.enabled ? '✓' : '✗'
+            }}</button>
         </div>
         <div class="controls-container">
           <div class="controls">
-            <button
-              :style="{ visibility: char.level > 0 ? 'visible' : 'hidden' }"
-              @click="decrement(char)"
-              :disabled="!char.enabled"
-            >−</button>
+            <button :style="{ visibility: char.level > 0 ? 'visible' : 'hidden' }" @click="decrement(char)"
+              :disabled="!char.enabled">−</button>
 
             <span v-if="!char.editing" @click="char.editing = true">
               {{ char.level }}
             </span>
-            <input
-              v-else
-              v-model.number="char.level"
-              @blur="char.editing = false"
-              @keyup.enter="char.editing = false"
-              type="number"
-            />
+            <input v-else v-model.number="char.level" @blur="char.editing = false" @keyup.enter="char.editing = false"
+              type="number" />
 
             <button @click="increment(char)" :disabled="!char.enabled">+</button>
           </div>
@@ -268,10 +255,21 @@ function scrollToCharacter(char) {
   margin-left: -8%;
 }
 
-.parallelogram-left.fire  { background-color: #4e0415; }
-.parallelogram-left.earth { background-color: #68b55d; }
-.parallelogram-left.air   { background-color: #fd9dfc; }
-.parallelogram-left.water { background-color: #6473ce; }
+.parallelogram-left.fire {
+  background-color: #4e0415;
+}
+
+.parallelogram-left.earth {
+  background-color: #68b55d;
+}
+
+.parallelogram-left.air {
+  background-color: #fd9dfc;
+}
+
+.parallelogram-left.water {
+  background-color: #6473ce;
+}
 
 .selected-char-background {
   width: 90%;
@@ -338,10 +336,21 @@ function scrollToCharacter(char) {
   position: absolute;
 }
 
-.parallelogram.fire  { background-color: #4e0415; }
-.parallelogram.earth { background-color: #68b55d; }
-.parallelogram.air   { background-color: #fd9dfc; }
-.parallelogram.water { background-color: #6473ce; }
+.parallelogram.fire {
+  background-color: #4e0415;
+}
+
+.parallelogram.earth {
+  background-color: #68b55d;
+}
+
+.parallelogram.air {
+  background-color: #fd9dfc;
+}
+
+.parallelogram.water {
+  background-color: #6473ce;
+}
 
 .card-items {
   position: absolute;
@@ -360,7 +369,10 @@ function scrollToCharacter(char) {
   gap: 4px;
 }
 
-.char-name  { flex: 1; }
+.char-name {
+  flex: 1;
+}
+
 .char-percent {
   text-align: right;
   opacity: 0.8;
@@ -377,10 +389,21 @@ function scrollToCharacter(char) {
   box-sizing: border-box;
 }
 
-.fire  .controls-container { background-color: #b72046; }
-.earth .controls-container { background-color: #2a5325; }
-.air   .controls-container { background-color: #b174ba; }
-.water .controls-container { background-color: #3a457b; }
+.fire .controls-container {
+  background-color: #b72046;
+}
+
+.earth .controls-container {
+  background-color: #2a5325;
+}
+
+.air .controls-container {
+  background-color: #b174ba;
+}
+
+.water .controls-container {
+  background-color: #3a457b;
+}
 
 .controls {
   display: flex;
