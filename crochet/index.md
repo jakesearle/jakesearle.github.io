@@ -10,6 +10,10 @@ List of my crochet projects
 
 * [Dr. Mario Viruses](./dr-mario/)
 
+## WIP
+
+* [Chibi Orcane](./my-patterns/chibi-orcane/)
+
 ## Tools
 
 * [Single Row](./tools/row-tool.md)
