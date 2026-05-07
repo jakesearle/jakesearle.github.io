@@ -9,6 +9,7 @@ import DualSpineWidget from '../../components/DualSpineWidget.vue'
 import FlatSpineWidget from '../../components/FlatSpineWidget.vue'
 import SkeletonWidget from '../../components/SkeletonWidget.vue'
 import PrintButton from '../../components/PrintButton.vue'
+import IntarsiaPlanner from '../../components/IntarsiaPlanner.vue'
 import './custom.css'
 
 export default {
@@ -25,5 +26,6 @@ export default {
     app.component('FlatSpineWidget', FlatSpineWidget)
     app.component('SkeletonWidget', SkeletonWidget)
     app.component('PrintButton', PrintButton)
+    app.component('IntarsiaPlanner', IntarsiaPlanner)
   }
 } satisfies Theme

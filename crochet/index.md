@@ -21,6 +21,7 @@ List of my crochet projects
 * [Vase Tool](./tools/vase-tool.md)
 * [Leaf Tool](./tools/leaf-tool.md)
 * [Whale Tool](./tools/whale-tool.md)
+* [Intarsia Planner](./tools/intarsia.md)
 
 ## Outside Tools
 
