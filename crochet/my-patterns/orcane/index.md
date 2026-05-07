@@ -280,3 +280,7 @@ Most amigurumi tends to slowly spiral over time, and this can vary with tension,
 ![](./img/cylinder.jpg)
 
 > What my tension looks like if the first stitch of each row is green
+
+## Feedback
+
+Questions? Comments? Suggestions? Feel free to email me at [jake@searle.garden](mailto:jake@searle.garden).
