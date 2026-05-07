@@ -176,7 +176,7 @@ async function startEditing(char) {
 async function handleTab(char, index, event) {
   event.preventDefault();
   char.editing = false;
-  const next = characters[index + 1];
+  const next = event.shiftKey ? characters[index - 1] : characters[index + 1];
   if (next) startEditing(next);
 }
 </script>
@@ -226,12 +226,13 @@ async function handleTab(char, index, event) {
             <button :style="{ visibility: char.level > 0 ? 'visible' : 'hidden' }" @click="decrement(char)"
               :disabled="!char.enabled">−</button>
 
-            <span v-if="!char.editing" @click="startEditing(char)">
-              {{ char.level }}
-            </span>
-            <input v-else v-model.number="char.level" :data-name="char.name" @blur="char.editing = false"
-              @keyup.enter="char.editing = false" @keydown.tab="handleTab(char, index, $event)"
-              @keydown.esc="char.editing = false" type="number" />
+            <div class="level-display" @click="startEditing(char)">
+              <span v-if="!char.editing">{{ char.level }}</span>
+              <input v-model.number="char.level" :data-name="char.name" @focus="startEditing(char)"
+                @blur="char.editing = false" @keyup.enter="char.editing = false"
+                @keydown.tab="handleTab(char, index, $event)" @keydown.esc="char.editing = false" inputmode="numeric"
+                enterkeyhint="next" type="number" />
+            </div>
 
             <button @click="increment(char)" :disabled="!char.enabled">+</button>
           </div>
@@ -465,6 +466,8 @@ async function handleTab(char, index, event) {
   border-style: solid;
   border-radius: 4px;
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .controls button:disabled {
@@ -484,6 +487,34 @@ async function handleTab(char, index, event) {
 .controls input {
   border: 1px solid #ccc;
   border-radius: 4px;
+}
+
+.level-display {
+  position: relative;
+  width: 4ch;
+  text-align: center;
+}
+
+.level-display span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.level-display input {
+  width: 100%;
+  opacity: 0;
+  font-size: 1.25rem;
+  background: none;
+  border: none;
+}
+
+.level-display input:focus {
+  opacity: 1;
 }
 
 /* Toggle button */
@@ -558,5 +589,12 @@ async function handleTab(char, index, event) {
 .scroll-to-btn:hover {
   background: rgba(255, 255, 255, 0.35);
   transform: translateY(2px);
+}
+
+.visually-hidden {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
 }
 </style>
