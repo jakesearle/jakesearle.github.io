@@ -25,7 +25,7 @@ head:
 ---
 
 <script setup>
-import RivalsRandom from './components/RivalsRandom.vue'
+import RivalsRandom from '../components/RivalsRandom.vue'
 </script>
 
 # Rivals 2 Weighted Random
