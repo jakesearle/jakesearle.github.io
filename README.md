@@ -9,3 +9,7 @@ Run locally
 Build locally
 
 `npm run docs:build`
+
+## RoA2 Character Portraits
+
+* Snag latest version from [presskit](https://www.rivals2.com/presskit)

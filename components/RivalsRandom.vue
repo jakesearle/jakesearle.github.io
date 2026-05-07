@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, watch, ref, computed } from "vue";
+import { reactive, watch, ref, computed, nextTick } from "vue";
 
 function getDefault() {
   return [
@@ -18,6 +18,7 @@ function getDefault() {
     { type: "water", name: "Ranno", level: 0, editing: false, enabled: true },
     { type: "water", name: "Orcane", level: 0, editing: false, enabled: true },
     { type: "water", name: "Etalus", level: 0, editing: false, enabled: true },
+    { type: "water", name: "Slade", level: 0, editing: false, enabled: true },
   ];
 }
 
@@ -80,7 +81,11 @@ function computeScaledWeights(eligibleChars) {
   return rawWeights.map((w) => (w === 0 ? 0 : Math.round(w / minWeight)));
 }
 
+const isShuffling = ref(false);
+
 function pickRandomCharacter() {
+  if (isShuffling.value) return;
+
   const eligibleChars = characters.filter((c) => c.enabled);
   const scaledWeights = computeScaledWeights(eligibleChars);
 
@@ -93,22 +98,22 @@ function pickRandomCharacter() {
     return;
   }
 
+  // Shuffle the eligible chars once for the animation loop
+  const shuffled = [...eligibleChars].sort(() => Math.random() - 0.5);
+
+  isShuffling.value = true;
   let flashCount = 0;
-  let previousChar = null;
+  let loopIndex = 0;
   clearInterval(flashingInterval);
   flashingInterval = setInterval(() => {
-    let randomChar;
-    do {
-      randomChar = eligibleChars[Math.floor(Math.random() * eligibleChars.length)];
-    } while (randomChar === previousChar && eligibleChars.length > 1);
-
-    selectedCharacter.value = randomChar;
-    previousChar = randomChar;
+    selectedCharacter.value = shuffled[loopIndex % shuffled.length];
+    loopIndex++;
     flashCount++;
 
     if (flashCount > 5) {
       clearInterval(flashingInterval);
       selectedCharacter.value = weightedPool[Math.floor(Math.random() * weightedPool.length)];
+      isShuffling.value = false;
     }
   }, 75);
 }
@@ -136,7 +141,15 @@ function getCharPercent(name) {
   return found ? found.percent : "0";
 }
 
-function resetCharacters() {
+function selectAll() {
+  characters.forEach((c) => (c.enabled = true));
+}
+
+function deselectAll() {
+  characters.forEach((c) => (c.enabled = false));
+}
+
+function resetData() {
   const defaults = getDefault();
   characters.splice(0, characters.length, ...defaults);
 }
@@ -149,11 +162,28 @@ function scrollToCharacter(char) {
     el.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 }
+
+async function startEditing(char) {
+  char.editing = true;
+  await nextTick();
+  const input = document.querySelector(`input[data-name="${char.name}"]`);
+  if (input) {
+    input.focus();
+    input.select();
+  }
+}
+
+async function handleTab(char, index, event) {
+  event.preventDefault();
+  char.editing = false;
+  const next = characters[index + 1];
+  if (next) startEditing(next);
+}
 </script>
 
 <template>
   <div class="random-row">
-    <div class="parallelogram-right" @click="pickRandomCharacter">
+    <div class="parallelogram-right" @click="pickRandomCharacter" :class="{ shuffling: isShuffling }">
       <div class="question">?</div>
     </div>
     <div v-if="selectedCharacter" class="parallelogram-left" :class="`${selectedCharacter.type}`">
@@ -178,7 +208,7 @@ function scrollToCharacter(char) {
   </div>
 
   <div class="character-list">
-    <div v-for="char in characters" :key="char.name" :ref="el => { if (el) cardRefs[char.name] = el }"
+    <div v-for="(char, index) in characters" :key="char.name" :ref="el => { if (el) cardRefs[char.name] = el }"
       class="parallelogram" :class="[`${char.type}`, { disabled: !char.enabled }]">
       <div class="char-background" :style="{
         backgroundImage: `url(/images/${char.name.replace(/ /g, '')}-2D.png)`,
@@ -196,11 +226,12 @@ function scrollToCharacter(char) {
             <button :style="{ visibility: char.level > 0 ? 'visible' : 'hidden' }" @click="decrement(char)"
               :disabled="!char.enabled">−</button>
 
-            <span v-if="!char.editing" @click="char.editing = true">
+            <span v-if="!char.editing" @click="startEditing(char)">
               {{ char.level }}
             </span>
-            <input v-else v-model.number="char.level" @blur="char.editing = false" @keyup.enter="char.editing = false"
-              type="number" />
+            <input v-else v-model.number="char.level" :data-name="char.name" @blur="char.editing = false"
+              @keyup.enter="char.editing = false" @keydown.tab="handleTab(char, index, $event)"
+              @keydown.esc="char.editing = false" type="number" />
 
             <button @click="increment(char)" :disabled="!char.enabled">+</button>
           </div>
@@ -209,8 +240,12 @@ function scrollToCharacter(char) {
     </div>
   </div>
 
-  <div class="reset-chars" @click="resetCharacters">
-    <a href="">Reset levels</a>
+  <div class="bottom-actions">
+    <button class="text-btn" @click="selectAll">Select all</button>
+    <button class="text-btn" @click="deselectAll">Deselect all</button>
+  </div>
+  <div class="bottom-actions">
+    <button class="text-btn" @click="resetData">Reset all data</button>
   </div>
 </template>
 
@@ -221,6 +256,10 @@ function scrollToCharacter(char) {
   align-items: center;
   margin-bottom: 8px;
   height: 200px;
+}
+
+.randomizer-controls {
+  margin-bottom: 8px;
 }
 
 .parallelogram-right {
@@ -234,6 +273,11 @@ function scrollToCharacter(char) {
   justify-content: center;
   align-items: center;
   cursor: pointer;
+}
+
+.parallelogram-right.shuffling {
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .question {
@@ -360,12 +404,13 @@ function scrollToCharacter(char) {
 
 .name {
   margin-left: 8px;
+  margin-right: 8px;
+  margin-bottom: 4px;
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
   font-size: 1.2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  /* width: 192px; */
   gap: 4px;
 }
 
@@ -375,7 +420,6 @@ function scrollToCharacter(char) {
 
 .char-percent {
   text-align: right;
-  opacity: 0.8;
   font-size: 0.9rem;
 }
 
@@ -448,10 +492,11 @@ function scrollToCharacter(char) {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.7);
+  border: 1.5px solid rgba(255, 255, 255, 1);
   background: rgba(255, 255, 255, 0.2);
   color: white;
   font-size: 0.7rem;
+  font-weight: 800;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -473,9 +518,26 @@ function scrollToCharacter(char) {
   color: rgba(255, 255, 255, 0.5);
 }
 
-.reset-chars {
-  text-align: center;
-  margin-top: 4rem;
+.bottom-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem 2rem;
+  margin-top: 2rem;
+}
+
+.text-btn {
+  background: none;
+  border: none;
+  color: var(--vp-c-brand, #646cff);
+  cursor: pointer;
+  font-size: 1rem;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.text-btn:hover {
+  color: var(--vp-c-brand-light, #747bff);
 }
 
 .scroll-to-btn {
