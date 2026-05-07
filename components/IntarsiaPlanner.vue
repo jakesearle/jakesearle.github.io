@@ -344,6 +344,17 @@ const colorPalette = computed(() => {
   return Array.from(colors)
 })
 
+const maxBobbinsInRow = computed(() => {
+  let maxCount = 0
+
+  for (const row of mergedColorGroups.value) {
+    const uniqueGroups = new Set(row.map(g => g.mergedGroupId))
+    maxCount = Math.max(maxCount, uniqueGroups.size)
+  }
+
+  return maxCount
+})
+
 const bobbinInfo = computed(() => {
   const groupStitches = new Map<number, { color: string, count: number }>()
 
@@ -573,6 +584,7 @@ const printPage = () => {
 
     <div v-if="gridData.length > 0" class="bobbins-section">
       <h3>Color Groups ({{ bobbinInfo.length }} total)</h3>
+      <p class="bobbins-subheading">Max bobbins needed: {{ maxBobbinsInRow }}</p>
       <div class="bobbins-list">
         <div
           v-for="bobbin in bobbinInfo"
@@ -610,13 +622,13 @@ const printPage = () => {
 <style scoped>
 .crochet-pattern-importer {
   width: 100%;
-  padding: 20px 0;
+  padding: 1.25rem 0;
 }
 
 .controls {
-  margin-bottom: 20px;
+  margin-bottom: 1.25rem;
   display: flex;
-  gap: 12px;
+  gap: 0.75rem;
   align-items: center;
 }
 
@@ -624,10 +636,10 @@ const printPage = () => {
   background-color: var(--vp-button-brand-bg);
   color: var(--vp-button-brand-text);
   border: 1px solid var(--vp-button-brand-border);
-  padding: 10px 20px;
-  border-radius: 20px;
+  padding: 0.625rem 1.25rem;
+  border-radius: 1.25rem;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
   transition: background-color 0.25s, border-color 0.25s;
 }
@@ -640,9 +652,9 @@ const printPage = () => {
 .settings-btn {
   background-color: var(--vp-c-bg-soft);
   color: var(--vp-c-text-1);
-  border: 1px solid var(--vp-c-divider);
-  padding: 8px;
-  border-radius: 8px;
+  border: 1px solid var(--vp-c-border);
+  padding: 0.5rem;
+  border-radius: 0.5rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -659,10 +671,10 @@ const printPage = () => {
   background-color: var(--vp-button-brand-bg);
   color: var(--vp-button-brand-text);
   border: 1px solid var(--vp-button-brand-border);
-  padding: 10px 20px;
-  border-radius: 20px;
+  padding: 0.625rem 1.25rem;
+  border-radius: 1.25rem;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
   transition: background-color 0.25s, border-color 0.25s;
 }
@@ -697,24 +709,24 @@ const printPage = () => {
 
 .settings-content {
   background-color: var(--vp-c-bg);
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 8px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 0.75rem;
   width: 90%;
   max-width: 500px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.3);
 }
 
 .settings-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--vp-c-divider);
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--vp-c-border);
 }
 
 .settings-header h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--vp-c-text-1);
 }
@@ -722,17 +734,17 @@ const printPage = () => {
 .close-btn {
   background: none;
   border: none;
-  font-size: 32px;
+  font-size: 2rem;
   line-height: 1;
   cursor: pointer;
   color: var(--vp-c-text-2);
   padding: 0;
-  width: 32px;
-  height: 32px;
+  width: 2rem;
+  height: 2rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 0.25rem;
   transition: background-color 0.25s, color 0.25s;
 }
 
@@ -742,24 +754,24 @@ const printPage = () => {
 }
 
 .settings-body {
-  padding: 20px;
+  padding: 1.25rem;
 }
 
 .setting-item {
-  margin-bottom: 20px;
+  margin-bottom: 1.25rem;
 }
 
 .setting-item label {
   display: block;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--vp-c-text-1);
-  margin-bottom: 8px;
+  margin-bottom: 0.5rem;
 }
 
 .setting-control {
   display: flex;
-  gap: 12px;
+  gap: 0.75rem;
   align-items: center;
 }
 
@@ -768,19 +780,26 @@ const printPage = () => {
 }
 
 .threshold-input {
-  width: 70px;
-  padding: 6px 8px;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 4px;
-  background-color: var(--vp-c-bg-soft);
+  width: 4.375rem;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 0.5rem;
+  background-color: var(--vp-c-bg);
   color: var(--vp-c-text-1);
   font-family: var(--vp-font-family-mono);
-  font-size: 14px;
+  font-size: 0.875rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.threshold-input:focus {
+  outline: none;
+  border-color: var(--vp-c-brand-1);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--vp-c-brand-1) 25%, transparent);
 }
 
 .setting-description {
-  margin-top: 8px;
-  font-size: 12px;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
   color: var(--vp-c-text-2);
   line-height: 1.4;
 }
@@ -792,9 +811,10 @@ const printPage = () => {
 
 .pattern-grid {
   display: inline-block;
-  border: 1px solid var(--vp-c-divider);
+  border: 1px solid var(--vp-c-border);
   width: 100%;
-  padding: 20px 50px;
+  padding: 1.25rem 3.125rem;
+  border-radius: 0.75rem;
 }
 
 .pattern-row {
@@ -824,142 +844,148 @@ const printPage = () => {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 700;
   font-family: var(--vp-font-family-mono);
   color: white;
   line-height: 1;
   z-index: 2;
   text-shadow:
-    -1px -1px 0 #000,
-    1px -1px 0 #000,
-    -1px 1px 0 #000,
-    1px 1px 0 #000,
-    -1px 0 0 #000,
-    1px 0 0 #000,
-    0 -1px 0 #000,
-    0 1px 0 #000;
+    -0.0625rem -0.0625rem 0 #000,
+    0.0625rem -0.0625rem 0 #000,
+    -0.0625rem 0.0625rem 0 #000,
+    0.0625rem 0.0625rem 0 #000,
+    -0.0625rem 0 0 #000,
+    0.0625rem 0 0 #000,
+    0 -0.0625rem 0 #000,
+    0 0.0625rem 0 #000;
 }
 
 .group-label-left {
-  left: 2px;
+  left: 0.125rem;
 }
 
 .group-label-right {
-  right: 2px;
+  right: 0.125rem;
 }
 
 .row-counter {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   font-family: var(--vp-font-family-mono);
   color: var(--vp-c-text-1);
   background-color: var(--vp-c-bg);
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid var(--vp-c-divider);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--vp-c-border);
   z-index: 1;
 }
 
 .row-counter-left {
-  left: -40px;
+  left: -2.5rem;
 }
 
 .row-counter-right {
-  right: -40px;
+  right: -2.5rem;
 }
 
 .empty-state {
   text-align: center;
-  padding: 40px;
+  padding: 2.5rem;
   color: var(--vp-c-text-2);
 }
 
 .empty-state .hint {
-  font-size: 14px;
-  margin-top: 8px;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
   color: var(--vp-c-text-3);
 }
 
 .bobbins-section {
-  margin-top: 40px;
-  padding-top: 20px;
-  border-top: 1px solid var(--vp-c-divider);
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--vp-c-border);
 }
 
 .bobbins-section h3 {
-  margin: 0 0 16px 0;
-  font-size: 18px;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--vp-c-text-1);
+}
+
+.bobbins-subheading {
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  color: var(--vp-c-text-2);
 }
 
 .bobbins-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .bobbin-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 4px;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 0.5rem;
   background-color: var(--vp-c-bg-soft);
 }
 
 .bobbin-swatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.25rem;
   border: 1px solid rgba(0, 0, 0, 0.2);
   flex-shrink: 0;
 }
 
 .bobbin-info {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--vp-c-text-1);
   font-family: var(--vp-font-family-mono);
 }
 
 .palette-section {
-  margin-top: 40px;
-  padding-top: 20px;
-  border-top: 1px solid var(--vp-c-divider);
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--vp-c-border);
 }
 
 .palette-section h3 {
-  margin: 0 0 16px 0;
-  font-size: 18px;
+  margin: 0 0 1rem 0;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--vp-c-text-1);
 }
 
 .palette-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+  gap: 0.75rem;
 }
 
 .palette-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 4px;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 0.5rem;
   background-color: var(--vp-c-bg-soft);
 }
 
 .palette-swatch {
-  width: 40px;
-  height: 40px;
-  border-radius: 4px;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.25rem;
   border: 1px solid rgba(0, 0, 0, 0.2);
   flex-shrink: 0;
 }
@@ -967,24 +993,24 @@ const printPage = () => {
 .palette-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0.25rem;
 }
 
 .palette-name {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
   color: var(--vp-c-text-1);
 }
 
 .palette-color {
   font-family: var(--vp-font-family-mono);
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--vp-c-text-2);
   word-break: break-all;
 }
 
 .palette-stitches {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--vp-c-text-3);
 }
 </style>
