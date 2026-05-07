@@ -9,6 +9,8 @@
     "dev:host": "vitepress dev --host",
     "build": "vitepress build",
     "preview": "vitepress preview",
-    "test": "vitest"
+    "test": "vitest",
+    
+    "docs:build": "vitepress build"
   }
 }
