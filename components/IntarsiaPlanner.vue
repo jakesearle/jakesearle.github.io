@@ -6,6 +6,39 @@ const canvas = ref<HTMLCanvasElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const showSettings = ref(false)
 const colorThreshold = ref(30)
+const gauge = ref(4)
+const tailLength = ref(8)
+const heightFeet = ref(6)
+const heightInches = ref(4)
+
+const totalHeightInches = computed(() => heightFeet.value * 12 + heightInches.value)
+const fathom = computed(() => totalHeightInches.value)
+const cubit = computed(() => (totalHeightInches.value / 4).toFixed(1))
+const palm = computed(() => (totalHeightInches.value / 20).toFixed(1))
+
+const convertToBodyMeasurements = (inches: number): string => {
+  const palmInches = totalHeightInches.value / 20
+  const cubitInches = totalHeightInches.value / 4
+  const fathomInches = totalHeightInches.value
+
+  const roundedToPalm = Math.ceil(inches / palmInches) * palmInches
+
+  let remaining = roundedToPalm
+  const fathoms = Math.floor(remaining / fathomInches)
+  remaining -= fathoms * fathomInches
+
+  const cubits = Math.floor(remaining / cubitInches)
+  remaining -= cubits * cubitInches
+
+  const palms = Math.round(remaining / palmInches)
+
+  const parts = []
+  if (fathoms > 0) parts.push(`${fathoms} fathom${fathoms > 1 ? 's' : ''}`)
+  if (cubits > 0) parts.push(`${cubits} cubit${cubits > 1 ? 's' : ''}`)
+  if (palms > 0) parts.push(`${palms} palm${palms > 1 ? 's' : ''}`)
+
+  return parts.length > 0 ? parts.join(', ') : '0 palms'
+}
 
 const colorDistance = (color1: string, color2: string): number => {
   const match1 = color1.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
@@ -375,11 +408,15 @@ const bobbinInfo = computed(() => {
 
   return Array.from(groupStitches.entries())
     .map(([groupId, info]) => {
+      const yarnLength = (3 * info.count / gauge.value) + (2 * tailLength.value)
+      const yarnLengthInches = Math.ceil(yarnLength)
       return {
         id: groupId,
         color: info.color,
         name: getColorName(info.color),
-        stitches: info.count
+        stitches: info.count,
+        yarnLength: yarnLengthInches,
+        bodyMeasurements: convertToBodyMeasurements(yarnLengthInches)
       }
     })
     .sort((a, b) => a.id - b.id)
@@ -519,6 +556,80 @@ const printPage = () => {
               Colors within this RGB distance will be merged into one (0 = exact match, 100 = very loose matching)
             </p>
           </div>
+          <div class="setting-item">
+            <label for="gauge">Gauge (st./in.)</label>
+            <div class="setting-control">
+              <input
+                id="gauge"
+                type="number"
+                min="1"
+                max="20"
+                step="0.5"
+                v-model.number="gauge"
+                class="threshold-input"
+              />
+            </div>
+            <p class="setting-description">
+              Number of stitches per inch for yarn estimation
+            </p>
+          </div>
+          <div class="setting-item">
+            <label for="tail-length">Tail Length (in.)</label>
+            <div class="setting-control">
+              <input
+                id="tail-length"
+                type="number"
+                min="0"
+                max="50"
+                step="0.5"
+                v-model.number="tailLength"
+                class="threshold-input"
+              />
+            </div>
+            <p class="setting-description">
+              Leftover yarn on each side of color changes
+            </p>
+          </div>
+          <div class="setting-item">
+            <label>User Height</label>
+            <div class="setting-control">
+              <input
+                type="number"
+                min="0"
+                max="8"
+                v-model.number="heightFeet"
+                class="threshold-input"
+                style="width: 3rem"
+              />
+              <span style="margin: 0 0.25rem">ft.</span>
+              <input
+                type="number"
+                min="0"
+                max="11"
+                v-model.number="heightInches"
+                class="threshold-input"
+                style="width: 3rem"
+              />
+              <span style="margin: 0 0.25rem">in.</span>
+            </div>
+            <p class="setting-description">
+              Your height for body-based measurements
+            </p>
+          </div>
+          <div class="setting-item body-measurements">
+            <div class="measurement-row">
+              <a href="https://en.wikipedia.org/wiki/Fathom" target="_blank" rel="noopener">Fathom (Wingspan)</a>
+              <span>{{ fathom }} in.</span>
+            </div>
+            <div class="measurement-row">
+              <a href="https://en.wikipedia.org/wiki/Cubit" target="_blank" rel="noopener">Cubit</a>
+              <span>{{ cubit }} in.</span>
+            </div>
+            <div class="measurement-row">
+              <a href="https://en.wikipedia.org/wiki/Hand_(unit)" target="_blank" rel="noopener">Palm</a>
+              <span>{{ palm }} in.</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -591,9 +702,19 @@ const printPage = () => {
           :key="bobbin.id"
           class="bobbin-item"
         >
-          <div class="bobbin-swatch" :style="{ backgroundColor: bobbin.color }" />
-          <div class="bobbin-info">
-            #{{ bobbin.id }} - {{ bobbin.name }} - {{ bobbin.stitches }} st.
+          <div class="bobbin-id" :style="{ backgroundColor: bobbin.color }">
+            #{{ bobbin.id }}
+          </div>
+          <div class="bobbin-details">
+            <div class="bobbin-name">{{ bobbin.name }}</div>
+            <div class="bobbin-body-measurements">
+              {{ bobbin.bodyMeasurements }}
+            </div>
+            <div class="bobbin-stats">
+              <span class="stat">{{ bobbin.stitches }} st.</span>
+              <span class="stat-separator">•</span>
+              <span class="stat">{{ bobbin.yarnLength }} in.</span>
+            </div>
           </div>
         </div>
       </div>
@@ -804,6 +925,42 @@ const printPage = () => {
   line-height: 1.4;
 }
 
+.body-measurements {
+  background-color: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-border);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+.measurement-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+.measurement-row:not(:last-child) {
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.measurement-row a {
+  color: var(--vp-c-brand-1);
+  text-decoration: none;
+  transition: color 0.25s;
+}
+
+.measurement-row a:hover {
+  color: var(--vp-c-brand-2);
+  text-decoration: underline;
+}
+
+.measurement-row span {
+  font-family: var(--vp-font-family-mono);
+  color: var(--vp-c-text-1);
+  font-weight: 600;
+}
+
 .pattern-grid-container {
   width: 100%;
   overflow-x: auto;
@@ -829,7 +986,7 @@ const printPage = () => {
   min-width: 0;
   border: 1px solid rgba(0, 0, 0, 0.1);
   position: relative;
-  box-sizing: border-box;
+  /*box-sizing: border-box;*/
 }
 
 .pattern-cell.grid-left {
@@ -924,33 +1081,88 @@ const printPage = () => {
 }
 
 .bobbins-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.75rem;
 }
 
 .bobbin-item {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
+  padding: 0.75rem;
   border: 1px solid var(--vp-c-border);
   border-radius: 0.5rem;
   background-color: var(--vp-c-bg-soft);
+  transition: background-color 0.15s ease;
 }
 
-.bobbin-swatch {
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 0.25rem;
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  flex-shrink: 0;
+.bobbin-item:hover {
+  background-color: var(--vp-c-bg-mute);
 }
 
-.bobbin-info {
-  font-size: 0.875rem;
-  color: var(--vp-c-text-1);
+.bobbin-id {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3rem;
+  width: 3rem;
+  height: 3rem;
   font-family: var(--vp-font-family-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: white;
+  border: 2px solid var(--vp-c-border);
+  border-radius: 0.375rem;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  text-shadow:
+    -0.0625rem -0.0625rem 0 #000,
+    0.0625rem -0.0625rem 0 #000,
+    -0.0625rem 0.0625rem 0 #000,
+    0.0625rem 0.0625rem 0 #000,
+    -0.0625rem 0 0 #000,
+    0.0625rem 0 0 #000,
+    0 -0.0625rem 0 #000,
+    0 0.0625rem 0 #000;
+}
+
+.bobbin-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  flex: 1;
+  justify-content: center;
+}
+
+.bobbin-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+}
+
+.bobbin-body-measurements {
+  font-size: 0.8125rem;
+  color: var(--vp-c-text-2);
+  font-weight: 500;
+}
+
+.bobbin-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.75rem;
+  color: var(--vp-c-text-3);
+  font-style: italic;
+}
+
+.stat {
+  font-weight: 400;
+}
+
+.stat-separator {
+  color: var(--vp-c-text-3);
 }
 
 .palette-section {
