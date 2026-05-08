@@ -506,13 +506,7 @@ const printPage = () => {
 <template>
   <div class="crochet-pattern-importer">
     <div class="controls">
-      <input
-        ref="fileInput"
-        type="file"
-        accept="image/png"
-        @change="handleFileUpload"
-        style="display: none"
-      />
+      <input ref="fileInput" type="file" accept="image/png" @change="handleFileUpload" style="display: none" />
       <button @click="triggerFileInput" class="upload-btn">
         Import PNG Pattern
       </button>
@@ -520,8 +514,11 @@ const printPage = () => {
         Print / Save as PDF
       </button>
       <button @click="showSettings = !showSettings" class="settings-btn" title="Settings">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path
+            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z">
+          </path>
           <circle cx="12" cy="12" r="3"></circle>
         </svg>
       </button>
@@ -537,20 +534,8 @@ const printPage = () => {
           <div class="setting-item">
             <label for="color-threshold">Similar Color Margin</label>
             <div class="setting-control">
-              <input
-                id="color-threshold"
-                type="range"
-                min="0"
-                max="100"
-                v-model.number="colorThreshold"
-              />
-              <input
-                type="number"
-                min="0"
-                max="100"
-                v-model.number="colorThreshold"
-                class="threshold-input"
-              />
+              <input id="color-threshold" type="range" min="0" max="100" v-model.number="colorThreshold" />
+              <input type="number" min="0" max="100" v-model.number="colorThreshold" class="threshold-input" />
             </div>
             <p class="setting-description">
               Colors within this RGB distance will be merged into one (0 = exact match, 100 = very loose matching)
@@ -559,15 +544,8 @@ const printPage = () => {
           <div class="setting-item">
             <label for="gauge">Gauge (st./in.)</label>
             <div class="setting-control">
-              <input
-                id="gauge"
-                type="number"
-                min="1"
-                max="20"
-                step="0.5"
-                v-model.number="gauge"
-                class="threshold-input"
-              />
+              <input id="gauge" type="number" min="1" max="20" step="0.5" v-model.number="gauge"
+                class="threshold-input" />
             </div>
             <p class="setting-description">
               Number of stitches per inch for yarn estimation
@@ -576,15 +554,8 @@ const printPage = () => {
           <div class="setting-item">
             <label for="tail-length">Tail Length (in.)</label>
             <div class="setting-control">
-              <input
-                id="tail-length"
-                type="number"
-                min="0"
-                max="50"
-                step="0.5"
-                v-model.number="tailLength"
-                class="threshold-input"
-              />
+              <input id="tail-length" type="number" min="0" max="50" step="0.5" v-model.number="tailLength"
+                class="threshold-input" />
             </div>
             <p class="setting-description">
               Leftover yarn on each side of color changes
@@ -593,23 +564,11 @@ const printPage = () => {
           <div class="setting-item">
             <label>User Height</label>
             <div class="setting-control">
-              <input
-                type="number"
-                min="0"
-                max="8"
-                v-model.number="heightFeet"
-                class="threshold-input"
-                style="width: 3rem"
-              />
+              <input type="number" min="0" max="8" v-model.number="heightFeet" class="threshold-input"
+                style="width: 3rem" />
               <span style="margin: 0 0.25rem">ft.</span>
-              <input
-                type="number"
-                min="0"
-                max="11"
-                v-model.number="heightInches"
-                class="threshold-input"
-                style="width: 3rem"
-              />
+              <input type="number" min="0" max="11" v-model.number="heightInches" class="threshold-input"
+                style="width: 3rem" />
               <span style="margin: 0 0.25rem">in.</span>
             </div>
             <p class="setting-description">
@@ -638,26 +597,14 @@ const printPage = () => {
 
     <div v-if="gridData.length > 0" class="pattern-grid-container">
       <div class="pattern-grid">
-        <div
-          v-for="(row, rowIndex) in gridData"
-          :key="rowIndex"
-          class="pattern-row"
-        >
-          <div
-            v-if="(gridData.length - rowIndex) % 2 === 0"
-            class="row-counter row-counter-left"
-          >
+        <div v-for="(row, rowIndex) in gridData" :key="rowIndex" class="pattern-row">
+          <div v-if="(gridData.length - rowIndex) % 2 === 0" class="row-counter row-counter-left">
             {{ gridData.length - rowIndex }}
           </div>
-          <div
-            v-for="(color, colIndex) in row"
-            :key="colIndex"
-            class="pattern-cell"
-            :class="{
-              'grid-left': colIndex % 10 === 0 && colIndex !== 0,
-              'grid-top': rowIndex % 10 === 0 && rowIndex !== 0
-            }"
-            :style="{
+          <div v-for="(color, colIndex) in row" :key="colIndex" class="pattern-cell" :class="{
+            'grid-left': colIndex % 10 === 0 && colIndex !== 0,
+            'grid-top': rowIndex % 10 === 0 && rowIndex !== 0
+          }" :style="{
               backgroundColor: color,
               boxShadow: [
                 getCellBorders(rowIndex, colIndex).top ? `inset 0 2px 0 0 ${darkenColor(color)}` : null,
@@ -665,23 +612,15 @@ const printPage = () => {
                 getCellBorders(rowIndex, colIndex).bottom ? `inset 0 -2px 0 0 ${darkenColor(color)}` : null,
                 getCellBorders(rowIndex, colIndex).left ? `inset 2px 0 0 0 ${darkenColor(color)}` : null
               ].filter(Boolean).join(', ') || 'none'
-            }"
-          >
-            <span
-              v-if="shouldShowGroupLabel(rowIndex, colIndex)"
-              class="group-label"
-              :class="{
-                'group-label-right': (gridData.length - rowIndex) % 2 === 1,
-                'group-label-left': (gridData.length - rowIndex) % 2 === 0
-              }"
-            >
+            }">
+            <span v-if="shouldShowGroupLabel(rowIndex, colIndex)" class="group-label" :class="{
+              'group-label-right': (gridData.length - rowIndex) % 2 === 1,
+              'group-label-left': (gridData.length - rowIndex) % 2 === 0
+            }">
               {{ getCellGroupInfo(rowIndex, colIndex)?.mergedGroupId }}
             </span>
           </div>
-          <div
-            v-if="(gridData.length - rowIndex) % 2 === 1"
-            class="row-counter row-counter-right"
-          >
+          <div v-if="(gridData.length - rowIndex) % 2 === 1" class="row-counter row-counter-right">
             {{ gridData.length - rowIndex }}
           </div>
         </div>
@@ -697,11 +636,7 @@ const printPage = () => {
       <h3>Color Groups ({{ bobbinInfo.length }} total)</h3>
       <p class="bobbins-subheading">Max bobbins needed: {{ maxBobbinsInRow }}</p>
       <div class="bobbins-list">
-        <div
-          v-for="bobbin in bobbinInfo"
-          :key="bobbin.id"
-          class="bobbin-item"
-        >
+        <div v-for="bobbin in bobbinInfo" :key="bobbin.id" class="bobbin-item">
           <div class="bobbin-id" :style="{ backgroundColor: bobbin.color }">
             #{{ bobbin.id }}
           </div>
@@ -723,11 +658,7 @@ const printPage = () => {
     <div v-if="gridData.length > 0" class="palette-section">
       <h3>Color Palette</h3>
       <div class="palette-grid">
-        <div
-          v-for="(item, index) in colorPaletteWithNames"
-          :key="index"
-          class="palette-item"
-        >
+        <div v-for="(item, index) in colorPaletteWithNames" :key="index" class="palette-item">
           <div class="palette-swatch" :style="{ backgroundColor: item.color }" />
           <div class="palette-info">
             <div class="palette-name">{{ item.name }}</div>
@@ -962,7 +893,9 @@ const printPage = () => {
 }
 
 .pattern-grid-container {
-  width: 100%;
+  width: 95vw;
+  margin-left: calc(50% - (95vw/2));
+  padding: 0 1rem;
   overflow-x: auto;
 }
 
@@ -986,15 +919,14 @@ const printPage = () => {
   min-width: 0;
   border: 1px solid rgba(0, 0, 0, 0.1);
   position: relative;
-  /*box-sizing: border-box;*/
 }
 
 .pattern-cell.grid-left {
-  border-left: 2px solid rgba(0, 0, 0, 0.5);
+  border-left: 2px solid rgba(0, 0, 0, 1.0);
 }
 
 .pattern-cell.grid-top {
-  border-top: 2px solid rgba(0, 0, 0, 0.5);
+  border-top: 2px solid rgba(0, 0, 0, 1.0);
 }
 
 .group-label {
