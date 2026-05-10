@@ -6,10 +6,31 @@ const canvas = ref<HTMLCanvasElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const showSettings = ref(false)
 const colorThreshold = ref(30)
-const gauge = ref(4)
+const gauge = ref(2.1)
+const errorMargin = ref(1.1)
 const tailLength = ref(8)
 const heightFeet = ref(6)
 const heightInches = ref(4)
+
+const woundBobbins = ref(new Set<number>())
+const currentRow = ref<number | null>(null)
+
+const toggleWound = (id: number) => {
+  const next = new Set(woundBobbins.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  woundBobbins.value = next
+}
+
+const moveUp = () => {
+  if (currentRow.value === null) currentRow.value = gridData.value.length - 1
+  else if (currentRow.value > 0) currentRow.value--
+}
+
+const moveDown = () => {
+  if (currentRow.value === null) currentRow.value = 0
+  else if (currentRow.value < gridData.value.length - 1) currentRow.value++
+}
 
 const totalHeightInches = computed(() => heightFeet.value * 12 + heightInches.value)
 const fathom = computed(() => totalHeightInches.value)
@@ -408,7 +429,7 @@ const bobbinInfo = computed(() => {
 
   return Array.from(groupStitches.entries())
     .map(([groupId, info]) => {
-      const yarnLength = (3 * info.count / gauge.value) + (2 * tailLength.value)
+      const yarnLength = (info.count * gauge.value * errorMargin.value) + (2 * tailLength.value)
       const yarnLengthInches = Math.ceil(yarnLength)
       return {
         id: groupId,
@@ -486,6 +507,7 @@ const handleFileUpload = (event: Event) => {
 
       ctx.drawImage(img, 0, 0)
       imageData.value = ctx.getImageData(0, 0, img.width, img.height)
+      currentRow.value = null
     }
     img.src = e.target?.result as string
   }
@@ -513,6 +535,13 @@ const printPage = () => {
       <button v-if="gridData.length > 0" @click="printPage" class="print-btn">
         Print / Save as PDF
       </button>
+      <div v-if="gridData.length > 0" class="row-nav">
+        <button @click="moveUp" class="nav-btn" title="Previous row">▲</button>
+        <span class="row-nav-label">
+          {{ currentRow !== null ? `Row ${gridData.length - currentRow}` : '—' }}
+        </span>
+        <button @click="moveDown" class="nav-btn" title="Next row">▼</button>
+      </div>
       <button @click="showSettings = !showSettings" class="settings-btn" title="Settings">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -542,13 +571,23 @@ const printPage = () => {
             </p>
           </div>
           <div class="setting-item">
-            <label for="gauge">Gauge (st./in.)</label>
+            <label for="gauge">Gauge (in./st.)</label>
             <div class="setting-control">
-              <input id="gauge" type="number" min="1" max="20" step="0.5" v-model.number="gauge"
+              <input id="gauge" type="number" min="0.1" max="10" step="0.1" v-model.number="gauge"
                 class="threshold-input" />
             </div>
             <p class="setting-description">
-              Number of stitches per inch for yarn estimation
+              Inches of yarn consumed per stitch
+            </p>
+          </div>
+          <div class="setting-item">
+            <label for="error-margin">Error Margin (multiplier)</label>
+            <div class="setting-control">
+              <input id="error-margin" type="number" min="1" max="2" step="0.05" v-model.number="errorMargin"
+                class="threshold-input" />
+            </div>
+            <p class="setting-description">
+              Multiplier applied to stitch yarn estimate to account for tension variation (e.g. 1.1 = 10% extra)
             </p>
           </div>
           <div class="setting-item">
@@ -597,7 +636,10 @@ const printPage = () => {
 
     <div v-if="gridData.length > 0" class="pattern-grid-container">
       <div class="pattern-grid">
-        <div v-for="(row, rowIndex) in gridData" :key="rowIndex" class="pattern-row">
+        <div v-for="(row, rowIndex) in gridData" :key="rowIndex"
+          class="pattern-row"
+          :class="{ 'pattern-row-active': currentRow === rowIndex }"
+          @click="currentRow = rowIndex">
           <div v-if="(gridData.length - rowIndex) % 2 === 0" class="row-counter row-counter-left">
             {{ gridData.length - rowIndex }}
           </div>
@@ -636,7 +678,11 @@ const printPage = () => {
       <h3>Color Groups ({{ bobbinInfo.length }} total)</h3>
       <p class="bobbins-subheading">Max bobbins needed: {{ maxBobbinsInRow }}</p>
       <div class="bobbins-list">
-        <div v-for="bobbin in bobbinInfo" :key="bobbin.id" class="bobbin-item">
+        <div v-for="bobbin in bobbinInfo" :key="bobbin.id" class="bobbin-item"
+          :class="{ 'bobbin-wound': woundBobbins.has(bobbin.id) }">
+          <input type="checkbox" class="bobbin-checkbox"
+            :checked="woundBobbins.has(bobbin.id)"
+            @change="toggleWound(bobbin.id)" />
           <div class="bobbin-id" :style="{ backgroundColor: bobbin.color }">
             #{{ bobbin.id }}
           </div>
@@ -734,6 +780,39 @@ const printPage = () => {
 .print-btn:hover {
   background-color: var(--vp-button-brand-hover-bg);
   border-color: var(--vp-button-brand-hover-border);
+}
+
+.row-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 1.25rem;
+  padding: 0.25rem 0.75rem;
+  background-color: var(--vp-c-bg-soft);
+}
+
+.nav-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--vp-c-text-1);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.15s;
+}
+
+.nav-btn:hover {
+  background-color: var(--vp-c-bg-mute);
+}
+
+.row-nav-label {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.8rem;
+  min-width: 4rem;
+  text-align: center;
+  color: var(--vp-c-text-1);
 }
 
 @media print {
@@ -911,6 +990,14 @@ const printPage = () => {
   display: flex;
   width: 100%;
   position: relative;
+  cursor: pointer;
+}
+
+.pattern-row-active {
+  outline: 3px solid var(--vp-c-brand-1);
+  outline-offset: -1px;
+  z-index: 1;
+  position: relative;
 }
 
 .pattern-cell {
@@ -1020,17 +1107,30 @@ const printPage = () => {
 
 .bobbin-item {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: 0.75rem;
   padding: 0.75rem;
   border: 1px solid var(--vp-c-border);
   border-radius: 0.5rem;
   background-color: var(--vp-c-bg-soft);
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, filter 0.2s ease, opacity 0.2s ease;
 }
 
 .bobbin-item:hover {
   background-color: var(--vp-c-bg-mute);
+}
+
+.bobbin-wound {
+  filter: saturate(0.25);
+  opacity: 0.6;
+}
+
+.bobbin-checkbox {
+  align-self: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .bobbin-id {
