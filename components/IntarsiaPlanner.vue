@@ -5,7 +5,7 @@ const imageData = ref<ImageData | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const showSettings = ref(false)
-const colorThreshold = ref(30)
+const colorThreshold = ref(15)
 const gauge = ref(2.1)
 const errorMargin = ref(1.05)
 const headLength = ref(5)
@@ -17,65 +17,82 @@ const woundBobbins = ref(new Set<number>())
 const currentRow = ref<number | null>(null)
 
 const impeccableYarns = [
-  { "name": "Amethyst", "r": 120, "g": 57, "b": 113 },
-  { "name": "Aqua", "r": 24, "g": 192, "b": 204 },
-  { "name": "Aran", "r": 234, "g": 225, "b": 211 },
-  { "name": "Arbor Rose", "r": 235, "g": 22, "b": 81 },
-  { "name": "Aruba Blue", "r": 123, "g": 224, "b": 219 },
-  { "name": "Barley", "r": 139, "g": 125, "b": 120 },
-  { "name": "Black", "r": 43, "g": 36, "b": 39 },
-  { "name": "Blue Haze", "r": 213, "g": 231, "b": 233 },
-  { "name": "Blue Moon", "r": 82, "g": 109, "b": 135 },
-  { "name": "Brite Sky Blue", "r": 0, "g": 116, "b": 163 },
-  { "name": "Burgundy", "r": 134, "g": 6, "b": 51 },
-  { "name": "Butterscotch", "r": 253, "g": 208, "b": 130 },
-  { "name": "Cherry", "r": 201, "g": 1, "b": 38 },
-  { "name": "Chocolate Brown", "r": 99, "g": 62, "b": 50 },
-  { "name": "Citron", "r": 227, "g": 230, "b": 158 },
-  { "name": "Claret", "r": 185, "g": 3, "b": 28 },
-  { "name": "Classic Gray", "r": 219, "g": 217, "b": 218 },
-  { "name": "Clear Blue", "r": 0, "g": 146, "b": 211 },
-  { "name": "Coral", "r": 255, "g": 183, "b": 187 },
-  { "name": "Dark Charcoal", "r": 68, "g": 62, "b": 64 },
-  { "name": "Deep Forest", "r": 116, "g": 104, "b": 75 },
-  { "name": "Eggplant", "r": 161, "g": 146, "b": 216 },
-  { "name": "Fern", "r": 201, "g": 195, "b": 115 },
-  { "name": "Fire Red", "r": 245, "g": 113, "b": 84 },
-  { "name": "Forest", "r": 152, "g": 150, "b": 87 },
-  { "name": "Gold", "r": 233, "g": 145, "b": 8 },
-  { "name": "Golden Beige", "r": 240, "g": 238, "b": 232 },
-  { "name": "Grape Punch", "r": 50, "g": 0, "b": 87 },
-  { "name": "Grass", "r": 199, "g": 199, "b": 90 },
-  { "name": "Green Lagoon", "r": 184, "g": 208, "b": 196 },
-  { "name": "Heather", "r": 243, "g": 212, "b": 175 },
-  { "name": "Jade", "r": 163, "g": 222, "b": 186 },
-  { "name": "Kelly Green", "r": 6, "g": 144, "b": 106 },
-  { "name": "Lavender", "r": 178, "g": 151, "b": 202 },
-  { "name": "Lippy", "r": 230, "g": 0, "b": 120 },
-  { "name": "Misty Blue", "r": 157, "g": 184, "b": 195 },
-  { "name": "Navy Blue", "r": 62, "g": 47, "b": 67 },
-  { "name": "Orange Crush", "r": 250, "g": 52, "b": 10 },
-  { "name": "Pale Gray", "r": 157, "g": 158, "b": 158 },
-  { "name": "Petunia", "r": 203, "g": 211, "b": 226 },
-  { "name": "Plum", "r": 189, "g": 156, "b": 178 },
-  { "name": "Pumpkin", "r": 232, "g": 72, "b": 5 },
-  { "name": "Putty", "r": 218, "g": 216, "b": 209 },
-  { "name": "Red Hot", "r": 191, "g": 0, "b": 10 },
-  { "name": "Rich Orchid", "r": 215, "g": 3, "b": 97 },
-  { "name": "Rouge", "r": 242, "g": 36, "b": 61 },
-  { "name": "Royal", "r": 1, "g": 30, "b": 112 },
-  { "name": "Sapphire", "r": 16, "g": 56, "b": 88 },
-  { "name": "Sea Green", "r": 171, "g": 223, "b": 229 },
-  { "name": "Skylight", "r": 197, "g": 227, "b": 223 },
-  { "name": "Smoke", "r": 207, "g": 217, "b": 219 },
-  { "name": "Soft Rose", "r": 241, "g": 184, "b": 185 },
-  { "name": "Soft Taupe", "r": 218, "g": 167, "b": 125 },
-  { "name": "Sunny Day", "r": 255, "g": 173, "b": 7 },
-  { "name": "Teal", "r": 2, "g": 127, "b": 137 },
-  { "name": "Thunder", "r": 137, "g": 133, "b": 132 },
-  { "name": "True Grey", "r": 132, "g": 120, "b": 122 },
-  { "name": "Violet", "r": 202, "g": 161, "b": 190 },
-  { "name": "White", "r": 230, "g": 228, "b": 232 }
+  { "name": "Amethyst", "hex": "#783971" },
+  { "name": "Aqua", "hex": "#18c0cc" },
+  { "name": "Aran", "hex": "#eae1d3" },
+  { "name": "Arbor Rose", "hex": "#eb1651" },
+  { "name": "Aruba Blue", "hex": "#7be0db" },
+  { "name": "Barley", "hex": "#8b7d78" },
+  { "name": "Black", "hex": "#2b2427" },
+  { "name": "Blue Haze", "hex": "#d5e7e9" },
+  { "name": "Blue Moon", "hex": "#526d87" },
+  { "name": "Brite Sky Blue", "hex": "#0074a3" },
+  { "name": "Burgundy", "hex": "#860633" },
+  { "name": "Butterscotch", "hex": "#fdd082" },
+  { "name": "Cherry", "hex": "#c90126" },
+  { "name": "Chocolate Brown", "hex": "#633e32" },
+  { "name": "Citron", "hex": "#e3e69e" },
+  { "name": "Claret", "hex": "#b9031c" },
+  { "name": "Classic Gray", "hex": "#dbd9da" },
+  { "name": "Clear Blue", "hex": "#0092d3" },
+  { "name": "Coral", "hex": "#ffb7bb" },
+  { "name": "Dark Charcoal", "hex": "#443e40" },
+  { "name": "Deep Forest", "hex": "#74684b" },
+  { "name": "Eggplant", "hex": "#a192d8" },
+  { "name": "Fern", "hex": "#c9c373" },
+  { "name": "Forest", "hex": "#626C42" },
+  { "name": "Gold", "hex": "#C17F0F" },
+  { "name": "Golden Beige", "hex": "#f0eee8" },
+  { "name": "Grape Punch", "hex": "#320057" },
+  { "name": "Grass", "hex": "#CFC670" },
+  { "name": "Green Lagoon", "hex": "#b8d0c4" },
+  { "name": "Heather", "hex": "#f3d4af" },
+  { "name": "Jade", "hex": "#a3deba" },
+  { "name": "Kelly Green", "hex": "#06906a" },
+  { "name": "Lavender", "hex": "#b297ca" },
+  { "name": "Lippy", "hex": "#e60078" },
+  { "name": "Misty Blue", "hex": "#9db8c3" },
+  { "name": "Navy Blue", "hex": "#3e2f43" },
+  { "name": "Orange Crush", "hex": "#fa340a" },
+  { "name": "Pale Gray", "hex": "#9d9e9e" },
+  { "name": "Petunia", "hex": "#cbd3e2" },
+  { "name": "Plum", "hex": "#bd9cb2" },
+  { "name": "Pumpkin", "hex": "#e84805" },
+  { "name": "Putty", "hex": "#dad8d1" },
+  { "name": "Red Hot", "hex": "#bf000a" },
+  { "name": "Rich Orchid", "hex": "#d70361" },
+  { "name": "Royal", "hex": "#011e70" },
+  { "name": "Sapphire", "hex": "#103858" },
+  { "name": "Sea Green", "hex": "#abdfe5" },
+  { "name": "Skylight", "hex": "#c5e3df" },
+  { "name": "Smoke", "hex": "#cfd9db" },
+  { "name": "Soft Rose", "hex": "#f1b8b9" },
+  { "name": "Soft Taupe", "hex": "#daa77d" },
+  { "name": "Sunny Day", "hex": "#ffad07" },
+  { "name": "Teal", "hex": "#027f89" },
+  { "name": "Thunder", "hex": "#898584" },
+  { "name": "True Grey", "hex": "#84787a" },
+  { "name": "Violet", "hex": "#caa1be" },
+  { "name": "White", "hex": "#e6e4e8" },
+
+  { "name": "Almond", "hex": "#B19D8F" },
+  { "name": "Apricot", "hex": "#DDAA8F" },
+  { "name": "Baked Clay", "hex": "#AD6152" },
+  { "name": "Barely Pink", "hex": "#DECBC8" },
+  { "name": "Cloud", "hex": "#DCD1C6" },
+  { "name": "Dark Emerald", "hex": "#0D5D57" },
+  { "name": "Fuchsia Blooms", "hex": "#C0124E" },
+  { "name": "Glacier", "hex": "#93B9C4" },
+  { "name": "Guacamole", "hex": "#5C8446" },
+  { "name": "Jasmine Green", "hex": "#96CD70" },
+  { "name": "Laurel", "hex": "#A0A293" },
+  { "name": "Lemon", "hex": "#F8C868" },
+  { "name": "Orchid", "hex": "#D09CA8" },
+  { "name": "Orchid Bloom", "hex": "#C1B0CC" },
+  { "name": "Peach Pink", "hex": "#EF8969" },
+  { "name": "Sphagnum", "hex": "#56583D" },
+  { "name": "Walnut", "hex": "#503928" },
+  { "name": "White Smoke", "hex": "#B4B7B9" }
 ]
 
 const toggleWound = (id: number) => {
@@ -138,11 +155,14 @@ const colorDistance = (color1: string, color2: string): number => {
   const g2 = parseInt(match2[2])
   const b2 = parseInt(match2[3])
 
-  return Math.sqrt(
-    Math.pow(r1 - r2, 2) +
-    Math.pow(g1 - g2, 2) +
-    Math.pow(b1 - b2, 2)
-  )
+  const oklab1 = rgbToOklab(r1, g1, b1)
+  const oklab2 = rgbToOklab(r2, g2, b2)
+
+  const dL = oklab1.L - oklab2.L
+  const da = oklab1.a - oklab2.a
+  const db = oklab1.b - oklab2.b
+
+  return Math.sqrt(dL * dL + da * da + db * db) * 333
 }
 
 const gridData = computed(() => {
@@ -368,66 +388,6 @@ const rgbaToHex = (rgba: string): string => {
   }).join('')
 }
 
-const getColorName = (rgba: string): string => {
-  const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
-  if (!match) return 'Unknown'
-
-  const r = parseInt(match[1]) / 255
-  const g = parseInt(match[2]) / 255
-  const b = parseInt(match[3]) / 255
-
-  const max = Math.max(r, g, b)
-  const min = Math.min(r, g, b)
-  const delta = max - min
-
-  const l = (max + min) / 2
-  const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1))
-
-  let h = 0
-  if (delta !== 0) {
-    if (max === r) {
-      h = ((g - b) / delta + (g < b ? 6 : 0)) / 6
-    } else if (max === g) {
-      h = ((b - r) / delta + 2) / 6
-    } else {
-      h = ((r - g) / delta + 4) / 6
-    }
-  }
-
-  let colorName = ''
-
-  if (l < 0.15) return 'Black'
-  if (l > 0.95) return 'White'
-
-  if (s < 0.1) {
-    if (l < 0.4) return 'Dark Gray'
-    if (l > 0.7) return 'Light Gray'
-    return 'Gray'
-  }
-
-  const hue = h * 360
-
-  if (hue < 15 || hue >= 345) colorName = 'Red'
-  else if (hue < 45) colorName = 'Orange'
-  else if (hue < 70) colorName = 'Yellow'
-  else if (hue < 150) colorName = 'Green'
-  else if (hue < 190) colorName = 'Cyan'
-  else if (hue < 260) colorName = 'Blue'
-  else if (hue < 290) colorName = 'Purple'
-  else if (hue < 345) colorName = 'Pink'
-
-  if (hue >= 15 && hue < 70 && l < 0.5 && s > 0.2) {
-    if (l < 0.35) return 'Dark Brown'
-    return 'Brown'
-  }
-
-  if (l < 0.3) colorName = 'Dark ' + colorName
-  else if (l > 0.8) colorName = 'Light ' + colorName
-  else if (s < 0.3) colorName = 'Dull ' + colorName
-
-  return colorName
-}
-
 const darkenColor = (rgba: string, amount: number = 0.3): string => {
   const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
   if (!match) return rgba
@@ -474,6 +434,7 @@ const maxBobbinsInRow = computed(() => {
 
 const bobbinInfo = computed(() => {
   const groupStitches = new Map<number, { color: string, count: number }>()
+  const mapping = yarnMapping.value
 
   for (const row of mergedColorGroups.value) {
     for (const group of row) {
@@ -494,10 +455,12 @@ const bobbinInfo = computed(() => {
     .map(([groupId, info]) => {
       const yarnLength = (info.count * gauge.value * errorMargin.value) + headLength.value + tailLength.value
       const yarnLengthInches = Math.ceil(yarnLength)
+      const yarn = mapping.get(info.color) || { name: 'Unknown', hex: '#000000' }
+
       return {
         id: groupId,
-        color: info.color,
-        name: getColorName(info.color),
+        color: yarn.hex,
+        name: yarn.name,
         stitches: info.count,
         yarnLength: yarnLengthInches,
         bodyMeasurements: convertToBodyMeasurements(yarnLengthInches)
@@ -514,6 +477,189 @@ const sortedBobbinInfo = computed(() => {
   })
 })
 
+const scrollToColor = (color: string) => {
+  const element = document.getElementById(`palette-${color}`)
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // Briefly highlight the element
+    element.style.outline = '3px solid var(--vp-c-brand-1)'
+    element.style.outlineOffset = '4px'
+    setTimeout(() => {
+      element.style.outline = ''
+      element.style.outlineOffset = ''
+    }, 2000)
+  }
+}
+
+const scrollToBobbin = (groupId: number) => {
+  const element = document.getElementById(`bobbin-${groupId}`)
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // Briefly highlight the element
+    element.style.outline = '3px solid var(--vp-c-brand-1)'
+    element.style.outlineOffset = '4px'
+    setTimeout(() => {
+      element.style.outline = ''
+      element.style.outlineOffset = ''
+    }, 2000)
+  }
+}
+
+const rgbToOklab = (r: number, g: number, b: number): { L: number, a: number, b: number } => {
+  // Convert to linear RGB
+  const toLinear = (c: number) => {
+    c = c / 255
+    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+  }
+
+  const lr = toLinear(r)
+  const lg = toLinear(g)
+  const lb = toLinear(b)
+
+  // Convert to Oklab
+  const l = 0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb
+  const m = 0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb
+  const s = 0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb
+
+  const l_ = Math.cbrt(l)
+  const m_ = Math.cbrt(m)
+  const s_ = Math.cbrt(s)
+
+  return {
+    L: 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,
+    a: 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_,
+    b: 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_
+  }
+}
+
+const oklabColorDistance = (hex1: string, hex2: string): number => {
+  const rgb1 = hexToRgb(hex1)
+  const rgb2 = hexToRgb(hex2)
+
+  const oklab1 = rgbToOklab(rgb1.r, rgb1.g, rgb1.b)
+  const oklab2 = rgbToOklab(rgb2.r, rgb2.g, rgb2.b)
+
+  // Simple Euclidean distance in Oklab space
+  const dL = oklab1.L - oklab2.L
+  const da = oklab1.a - oklab2.a
+  const db = oklab1.b - oklab2.b
+
+  return Math.sqrt(dL * dL + da * da + db * db)
+}
+
+// Hungarian Algorithm for optimal assignment
+const hungarianAlgorithm = (costMatrix: number[][]): number[] => {
+  const n = costMatrix.length
+  const m = costMatrix[0].length
+
+  // Pad matrix to be square if needed
+  const size = Math.max(n, m)
+  const matrix = Array(size).fill(0).map(() => Array(size).fill(0))
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < m; j++) {
+      matrix[i][j] = costMatrix[i][j]
+    }
+  }
+
+  // Step 1: Row reduction
+  for (let i = 0; i < size; i++) {
+    const minVal = Math.min(...matrix[i])
+    for (let j = 0; j < size; j++) {
+      matrix[i][j] -= minVal
+    }
+  }
+
+  // Step 2: Column reduction
+  for (let j = 0; j < size; j++) {
+    let minVal = Infinity
+    for (let i = 0; i < size; i++) {
+      minVal = Math.min(minVal, matrix[i][j])
+    }
+    for (let i = 0; i < size; i++) {
+      matrix[i][j] -= minVal
+    }
+  }
+
+  // Find optimal assignment using simple greedy on reduced matrix
+  const rowAssignment = Array(size).fill(-1)
+  const colUsed = Array(size).fill(false)
+
+  // Assign zeros greedily
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < m; j++) {
+      if (matrix[i][j] === 0 && !colUsed[j]) {
+        rowAssignment[i] = j
+        colUsed[j] = true
+        break
+      }
+    }
+  }
+
+  // For any unassigned rows, find minimum cost
+  for (let i = 0; i < n; i++) {
+    if (rowAssignment[i] === -1) {
+      let minJ = -1
+      let minCost = Infinity
+      for (let j = 0; j < m; j++) {
+        if (!colUsed[j] && matrix[i][j] < minCost) {
+          minCost = matrix[i][j]
+          minJ = j
+        }
+      }
+      if (minJ !== -1) {
+        rowAssignment[i] = minJ
+        colUsed[minJ] = true
+      }
+    }
+  }
+
+  return rowAssignment
+}
+
+const getOptimalYarnMapping = (patternColors: string[]): Map<string, typeof impeccableYarns[0]> => {
+  const mapping = new Map<string, typeof impeccableYarns[0]>()
+
+  // Build cost matrix: rows = pattern colors, columns = yarns
+  const costMatrix: number[][] = []
+
+  for (const patternColor of patternColors) {
+    const patternHex = rgbaToHex(patternColor)
+    const row: number[] = []
+    for (const yarn of impeccableYarns) {
+      const distance = oklabColorDistance(patternHex, yarn.hex)
+      row.push(distance)
+    }
+    costMatrix.push(row)
+  }
+
+  // Run Hungarian algorithm
+  const assignment = hungarianAlgorithm(costMatrix)
+
+  // Build mapping from assignment
+  for (let i = 0; i < patternColors.length; i++) {
+    const yarnIndex = assignment[i]
+    if (yarnIndex !== -1 && yarnIndex < impeccableYarns.length) {
+      mapping.set(patternColors[i], impeccableYarns[yarnIndex])
+    }
+  }
+
+  return mapping
+}
+
+const yarnMapping = computed(() => {
+  return getOptimalYarnMapping(colorPalette.value)
+})
+
+const gridDataWithYarnColors = computed(() => {
+  const mapping = yarnMapping.value
+  return gridData.value.map(row =>
+    row.map(patternColor => {
+      const yarn = mapping.get(patternColor)
+      return yarn ? yarn.hex : patternColor
+    })
+  )
+})
+
 const colorPaletteWithNames = computed(() => {
   const colors = colorPalette.value
   const colorStitchCount = new Map<string, number>()
@@ -524,36 +670,21 @@ const colorPaletteWithNames = computed(() => {
     }
   }
 
-  const nameCount = new Map<string, number>()
-  const nameUsage = new Map<string, number>()
-
-  for (const color of colors) {
-    const name = getColorName(color)
-    nameCount.set(name, (nameCount.get(name) || 0) + 1)
-  }
+  const mapping = yarnMapping.value
 
   const result = colors.map(color => {
-    const baseName = getColorName(color)
-    const count = nameCount.get(baseName) || 1
-
-    if (count > 1) {
-      const usage = (nameUsage.get(baseName) || 0) + 1
-      nameUsage.set(baseName, usage)
-      return {
-        color,
-        name: getNearestYarn(color).name,
-        yarn: getNearestYarn(color),
-        hex: rgbaToHex(color),
-        stitches: colorStitchCount.get(color) || 0
-      }
-    }
+    const yarn = mapping.get(color) || { name: 'Unknown', hex: '#000000' }
+    const stitches = colorStitchCount.get(color) || 0
+    const yarnLengthInches = (stitches * gauge.value * errorMargin.value) + headLength.value + tailLength.value
+    const yarnLengthYards = (yarnLengthInches / 36).toFixed(1)
 
     return {
       color,
-      name: getNearestYarn(color).name,
-      yarn: getNearestYarn(color),
+      name: yarn.name,
+      yarn: yarn,
       hex: rgbaToHex(color),
-      stitches: colorStitchCount.get(color) || 0
+      stitches,
+      yardage: yarnLengthYards
     }
   })
 
@@ -597,19 +728,72 @@ const printPage = () => {
   }
 }
 
+const hexToRgb = (hex: string): { r: number, g: number, b: number } => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : { r: 0, g: 0, b: 0 }
+}
+
+const rgbToHsv = (r: number, g: number, b: number): { h: number, s: number, v: number } => {
+  r /= 255
+  g /= 255
+  b /= 255
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const delta = max - min
+
+  let h = 0
+  if (delta !== 0) {
+    if (max === r) h = ((g - b) / delta) % 6
+    else if (max === g) h = (b - r) / delta + 2
+    else h = (r - g) / delta + 4
+    h *= 60
+    if (h < 0) h += 360
+  }
+
+  const s = max === 0 ? 0 : delta / max
+  const v = max
+
+  return { h, s, v }
+}
+
+const hsvColorDistance = (hex1: string, hex2: string): number => {
+  const rgb1 = hexToRgb(hex1)
+  const rgb2 = hexToRgb(hex2)
+  const hsv1 = rgbToHsv(rgb1.r, rgb1.g, rgb1.b)
+  const hsv2 = rgbToHsv(rgb2.r, rgb2.g, rgb2.b)
+
+  // Handle hue circularity (0° = 360°)
+  let dh = Math.abs(hsv1.h - hsv2.h)
+  if (dh > 180) dh = 360 - dh
+
+  // Normalize and weight: hue is most important, then saturation, then value
+  const hueDist = dh / 180  // normalize to 0-1
+  const satDist = Math.abs(hsv1.s - hsv2.s)
+  const valDist = Math.abs(hsv1.v - hsv2.v)
+
+  // Weight hue heavily to keep colors in same family
+  return Math.sqrt(hueDist * hueDist * 5 + satDist * satDist + valDist * valDist)
+}
+
 const getNearestYarn = (rgba: string) => {
-  const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
-  if (!match) return { name: 'Unknown', r: 0, g: 0, b: 0 }
-  const r = parseInt(match[1]), g = parseInt(match[2]), b = parseInt(match[3])
+  const patternHex = rgbaToHex(rgba)
+  if (!patternHex) return { name: 'Unknown', hex: '#000000' }
+
   return impeccableYarns.reduce((nearest, yarn) => {
-    const dist = Math.sqrt((r - yarn.r) ** 2 + (g - yarn.g) ** 2 + (b - yarn.b) ** 2)
-    const nearestDist = Math.sqrt((r - nearest.r) ** 2 + (g - nearest.g) ** 2 + (b - nearest.b) ** 2)
+    const dist = hsvColorDistance(patternHex, yarn.hex)
+    const nearestDist = hsvColorDistance(patternHex, nearest.hex)
     return dist < nearestDist ? yarn : nearest
   })
 }
 
-const yarnToRgba = (yarn: { r: number, g: number, b: number }) =>
-  `rgba(${yarn.r},${yarn.g},${yarn.b},1)`
+const yarnToRgba = (yarn: { hex: string }) => {
+  const rgb = hexToRgb(yarn.hex)
+  return `rgba(${rgb.r},${rgb.g},${rgb.b},1)`
+}
 </script>
 
 <template>
@@ -654,7 +838,10 @@ const yarnToRgba = (yarn: { r: number, g: number, b: number }) =>
               <input type="number" min="0" max="100" v-model.number="colorThreshold" class="threshold-input" />
             </div>
             <p class="setting-description">
-              Colors within this RGB distance will be merged into one (0 = exact match, 100 = very loose matching)
+              Colors within this distance will be merged into one (0 = exact match, 100 = very loose matching)
+            </p>
+            <p class="setting-stat">
+              Number of colors: <strong>{{ colorPalette.length }}</strong>
             </p>
           </div>
           <div class="setting-item">
@@ -725,6 +912,23 @@ const yarnToRgba = (yarn: { r: number, g: number, b: number }) =>
               <span>{{ palm }} in.</span>
             </div>
           </div>
+          <div class="setting-item">
+            <label>Available Yarn Colors</label>
+            <div class="yarn-palette">
+              <div
+                v-for="yarn in impeccableYarns"
+                :key="yarn.name"
+                class="yarn-chip"
+                :title="yarn.name"
+              >
+                <div
+                  class="yarn-chip-swatch"
+                  :style="{ backgroundColor: yarn.hex }"
+                />
+                <span class="yarn-chip-name">{{ yarn.name }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -733,10 +937,10 @@ const yarnToRgba = (yarn: { r: number, g: number, b: number }) =>
 
     <div v-if="gridData.length > 0" class="pattern-grid-container">
       <div class="pattern-grid">
-        <div v-for="(row, rowIndex) in gridData" :key="rowIndex" class="pattern-row"
+        <div v-for="(row, rowIndex) in gridDataWithYarnColors" :key="rowIndex" class="pattern-row"
           :class="{ 'pattern-row-active': currentRow === rowIndex }" @click="currentRow = rowIndex">
-          <div v-if="(gridData.length - rowIndex) % 2 === 0" class="row-counter row-counter-left">
-            {{ gridData.length - rowIndex }}
+          <div v-if="(gridDataWithYarnColors.length - rowIndex) % 2 === 0" class="row-counter row-counter-left">
+            {{ gridDataWithYarnColors.length - rowIndex }}
           </div>
           <div v-for="(color, colIndex) in row" :key="colIndex" class="pattern-cell" :class="{
             'grid-left': colIndex % 10 === 0 && colIndex !== 0,
@@ -750,15 +954,15 @@ const yarnToRgba = (yarn: { r: number, g: number, b: number }) =>
               getCellBorders(rowIndex, colIndex).left ? `inset 2px 0 0 0 ${darkenColor(color)}` : null
             ].filter(Boolean).join(', ') || 'none'
           }">
-            <span v-if="shouldShowGroupLabel(rowIndex, colIndex)" class="group-label" :class="{
-              'group-label-right': (gridData.length - rowIndex) % 2 === 1,
-              'group-label-left': (gridData.length - rowIndex) % 2 === 0
-            }">
+            <span v-if="shouldShowGroupLabel(rowIndex, colIndex)" class="group-label group-label-link" :class="{
+              'group-label-right': (gridDataWithYarnColors.length - rowIndex) % 2 === 1,
+              'group-label-left': (gridDataWithYarnColors.length - rowIndex) % 2 === 0
+            }" @click.stop="scrollToBobbin(getCellGroupInfo(rowIndex, colIndex)?.mergedGroupId || 0)">
               {{ getCellGroupInfo(rowIndex, colIndex)?.mergedGroupId }}
             </span>
           </div>
-          <div v-if="(gridData.length - rowIndex) % 2 === 1" class="row-counter row-counter-right">
-            {{ gridData.length - rowIndex }}
+          <div v-if="(gridDataWithYarnColors.length - rowIndex) % 2 === 1" class="row-counter row-counter-right">
+            {{ gridDataWithYarnColors.length - rowIndex }}
           </div>
         </div>
       </div>
@@ -774,14 +978,14 @@ const yarnToRgba = (yarn: { r: number, g: number, b: number }) =>
       <p class="bobbins-subheading">Max bobbins needed: {{ maxBobbinsInRow }}</p>
       <div class="bobbins-list">
         <div v-for="bobbin in sortedBobbinInfo" :key="bobbin.id" class="bobbin-item"
-          :class="{ 'bobbin-wound': woundBobbins.has(bobbin.id) }">
+          :class="{ 'bobbin-wound': woundBobbins.has(bobbin.id) }" :id="`bobbin-${bobbin.id}`">
           <input type="checkbox" class="bobbin-checkbox" :checked="woundBobbins.has(bobbin.id)"
             @change="toggleWound(bobbin.id)" />
           <div class="bobbin-id" :style="{ backgroundColor: bobbin.color }">
             #{{ bobbin.id }}
           </div>
           <div class="bobbin-details">
-            <div class="bobbin-name">{{ bobbin.name }}</div>
+            <div class="bobbin-name bobbin-name-link" @click="scrollToColor(bobbin.color)">{{ bobbin.name }}</div>
             <div class="bobbin-body-measurements">
               {{ bobbin.bodyMeasurements }}
             </div>
@@ -798,16 +1002,24 @@ const yarnToRgba = (yarn: { r: number, g: number, b: number }) =>
     <div v-if="gridData.length > 0" class="palette-section">
       <h3>Color Palette</h3>
       <div class="palette-grid">
-        <div v-for="(item, index) in colorPaletteWithNames" :key="index" class="palette-item">
-          <div class="palette-swatches">
-            <div class="palette-swatch" :style="{ backgroundColor: item.color }" title="PNG color" />
-            <div class="palette-swatch palette-swatch-yarn" :style="{ backgroundColor: yarnToRgba(item.yarn) }"
-              title="Yarn color" />
+        <div v-for="(item, index) in colorPaletteWithNames" :key="index" class="palette-item" :id="`palette-${item.yarn.hex}`">
+          <div class="palette-swatch-split">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <!-- Top-left triangle (PNG color) -->
+              <polygon points="0,0 100,0 0,100" :fill="item.color" />
+              <!-- Bottom-right triangle (Yarn color) -->
+              <polygon points="100,0 100,100 0,100" :fill="yarnToRgba(item.yarn)" />
+              <!-- Diagonal divider line -->
+              <line x1="100" y1="0" x2="0" y2="100" stroke="var(--vp-c-border)" stroke-width="2" />
+            </svg>
+            <div class="swatch-label swatch-label-tl">PNG</div>
+            <div class="swatch-label swatch-label-br">Yarn</div>
           </div>
           <div class="palette-info">
             <div class="palette-name">{{ item.name }}</div>
             <div class="palette-color">{{ item.hex }}</div>
             <div class="palette-stitches">{{ item.stitches }} stitches</div>
+            <div class="palette-stitches">{{ item.yardage }} yards</div>
           </div>
         </div>
       </div>
@@ -942,6 +1154,9 @@ const yarnToRgba = (yarn: { r: number, g: number, b: number }) =>
   border-radius: 0.75rem;
   width: 90%;
   max-width: 500px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.3);
 }
 
@@ -984,6 +1199,8 @@ const yarnToRgba = (yarn: { r: number, g: number, b: number }) =>
 
 .settings-body {
   padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .setting-item {
@@ -1033,6 +1250,17 @@ const yarnToRgba = (yarn: { r: number, g: number, b: number }) =>
   line-height: 1.4;
 }
 
+.setting-stat {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--vp-c-text-1);
+}
+
+.setting-stat strong {
+  color: var(--vp-c-brand-1);
+  font-family: var(--vp-font-family-mono);
+}
+
 .body-measurements {
   background-color: var(--vp-c-bg-soft);
   border: 1px solid var(--vp-c-border);
@@ -1067,6 +1295,45 @@ const yarnToRgba = (yarn: { r: number, g: number, b: number }) =>
   font-family: var(--vp-font-family-mono);
   color: var(--vp-c-text-1);
   font-weight: 600;
+}
+
+.yarn-palette {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: 0.5rem;
+  max-height: 20rem;
+  overflow-y: auto;
+  padding: 0.5rem;
+  background-color: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-border);
+  border-radius: 0.5rem;
+}
+
+.yarn-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem;
+  background-color: var(--vp-c-bg);
+  border: 1px solid var(--vp-c-border);
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+}
+
+.yarn-chip-swatch {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+}
+
+.yarn-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--vp-c-text-2);
+  font-size: 0.7rem;
 }
 
 .pattern-grid-container {
@@ -1143,6 +1410,15 @@ const yarnToRgba = (yarn: { r: number, g: number, b: number }) =>
   right: 0.125rem;
 }
 
+.group-label-link {
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.group-label-link:hover {
+  transform: scale(1.2);
+}
+
 .row-counter {
   position: absolute;
   top: 50%;
@@ -1154,7 +1430,7 @@ const yarnToRgba = (yarn: { r: number, g: number, b: number }) =>
   background-color: var(--vp-c-bg);
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
-  border: 1px solid var(--vp-c-border);
+  /* border: 1px solid var(--vp-c-border); */
   z-index: 1;
 }
 
@@ -1271,6 +1547,18 @@ const yarnToRgba = (yarn: { r: number, g: number, b: number }) =>
   color: var(--vp-c-text-1);
 }
 
+.bobbin-name-link {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--vp-c-brand-1);
+  transition: color 0.2s ease;
+}
+
+.bobbin-name-link:hover {
+  color: var(--vp-c-brand-1);
+}
+
 .bobbin-body-measurements {
   font-size: 0.8125rem;
   color: var(--vp-c-text-2);
@@ -1324,23 +1612,43 @@ const yarnToRgba = (yarn: { r: number, g: number, b: number }) =>
   background-color: var(--vp-c-bg-soft);
 }
 
-.palette-swatch {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.25rem;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+.palette-swatch-split {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--vp-c-border);
+  overflow: hidden;
   flex-shrink: 0;
+  position: relative;
 }
 
-.palette-swatches {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex-shrink: 0;
+.palette-swatch-split svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
-.palette-swatch-yarn {
-  border-style: dashed;
+.swatch-label {
+  position: absolute;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: white;
+  text-shadow:
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000;
+  pointer-events: none;
+}
+
+.swatch-label-tl {
+  top: 0.25rem;
+  left: 0.25rem;
+}
+
+.swatch-label-br {
+  bottom: 0.25rem;
+  right: 0.25rem;
 }
 
 .palette-info {
@@ -1366,4 +1674,5 @@ const yarnToRgba = (yarn: { r: number, g: number, b: number }) =>
   font-size: 0.75rem;
   color: var(--vp-c-text-3);
 }
+
 </style>
