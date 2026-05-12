@@ -7,13 +7,76 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const showSettings = ref(false)
 const colorThreshold = ref(30)
 const gauge = ref(2.1)
-const errorMargin = ref(1.1)
-const tailLength = ref(8)
+const errorMargin = ref(1.05)
+const headLength = ref(5)
+const tailLength = ref(10)
 const heightFeet = ref(6)
 const heightInches = ref(4)
 
 const woundBobbins = ref(new Set<number>())
 const currentRow = ref<number | null>(null)
+
+const impeccableYarns = [
+  { "name": "Amethyst", "r": 120, "g": 57, "b": 113 },
+  { "name": "Aqua", "r": 24, "g": 192, "b": 204 },
+  { "name": "Aran", "r": 234, "g": 225, "b": 211 },
+  { "name": "Arbor Rose", "r": 235, "g": 22, "b": 81 },
+  { "name": "Aruba Blue", "r": 123, "g": 224, "b": 219 },
+  { "name": "Barley", "r": 139, "g": 125, "b": 120 },
+  { "name": "Black", "r": 43, "g": 36, "b": 39 },
+  { "name": "Blue Haze", "r": 213, "g": 231, "b": 233 },
+  { "name": "Blue Moon", "r": 82, "g": 109, "b": 135 },
+  { "name": "Brite Sky Blue", "r": 0, "g": 116, "b": 163 },
+  { "name": "Burgundy", "r": 134, "g": 6, "b": 51 },
+  { "name": "Butterscotch", "r": 253, "g": 208, "b": 130 },
+  { "name": "Cherry", "r": 201, "g": 1, "b": 38 },
+  { "name": "Chocolate Brown", "r": 99, "g": 62, "b": 50 },
+  { "name": "Citron", "r": 227, "g": 230, "b": 158 },
+  { "name": "Claret", "r": 185, "g": 3, "b": 28 },
+  { "name": "Classic Gray", "r": 219, "g": 217, "b": 218 },
+  { "name": "Clear Blue", "r": 0, "g": 146, "b": 211 },
+  { "name": "Coral", "r": 255, "g": 183, "b": 187 },
+  { "name": "Dark Charcoal", "r": 68, "g": 62, "b": 64 },
+  { "name": "Deep Forest", "r": 116, "g": 104, "b": 75 },
+  { "name": "Eggplant", "r": 161, "g": 146, "b": 216 },
+  { "name": "Fern", "r": 201, "g": 195, "b": 115 },
+  { "name": "Fire Red", "r": 245, "g": 113, "b": 84 },
+  { "name": "Forest", "r": 152, "g": 150, "b": 87 },
+  { "name": "Gold", "r": 233, "g": 145, "b": 8 },
+  { "name": "Golden Beige", "r": 240, "g": 238, "b": 232 },
+  { "name": "Grape Punch", "r": 50, "g": 0, "b": 87 },
+  { "name": "Grass", "r": 199, "g": 199, "b": 90 },
+  { "name": "Green Lagoon", "r": 184, "g": 208, "b": 196 },
+  { "name": "Heather", "r": 243, "g": 212, "b": 175 },
+  { "name": "Jade", "r": 163, "g": 222, "b": 186 },
+  { "name": "Kelly Green", "r": 6, "g": 144, "b": 106 },
+  { "name": "Lavender", "r": 178, "g": 151, "b": 202 },
+  { "name": "Lippy", "r": 230, "g": 0, "b": 120 },
+  { "name": "Misty Blue", "r": 157, "g": 184, "b": 195 },
+  { "name": "Navy Blue", "r": 62, "g": 47, "b": 67 },
+  { "name": "Orange Crush", "r": 250, "g": 52, "b": 10 },
+  { "name": "Pale Gray", "r": 157, "g": 158, "b": 158 },
+  { "name": "Petunia", "r": 203, "g": 211, "b": 226 },
+  { "name": "Plum", "r": 189, "g": 156, "b": 178 },
+  { "name": "Pumpkin", "r": 232, "g": 72, "b": 5 },
+  { "name": "Putty", "r": 218, "g": 216, "b": 209 },
+  { "name": "Red Hot", "r": 191, "g": 0, "b": 10 },
+  { "name": "Rich Orchid", "r": 215, "g": 3, "b": 97 },
+  { "name": "Rouge", "r": 242, "g": 36, "b": 61 },
+  { "name": "Royal", "r": 1, "g": 30, "b": 112 },
+  { "name": "Sapphire", "r": 16, "g": 56, "b": 88 },
+  { "name": "Sea Green", "r": 171, "g": 223, "b": 229 },
+  { "name": "Skylight", "r": 197, "g": 227, "b": 223 },
+  { "name": "Smoke", "r": 207, "g": 217, "b": 219 },
+  { "name": "Soft Rose", "r": 241, "g": 184, "b": 185 },
+  { "name": "Soft Taupe", "r": 218, "g": 167, "b": 125 },
+  { "name": "Sunny Day", "r": 255, "g": 173, "b": 7 },
+  { "name": "Teal", "r": 2, "g": 127, "b": 137 },
+  { "name": "Thunder", "r": 137, "g": 133, "b": 132 },
+  { "name": "True Grey", "r": 132, "g": 120, "b": 122 },
+  { "name": "Violet", "r": 202, "g": 161, "b": 190 },
+  { "name": "White", "r": 230, "g": 228, "b": 232 }
+]
 
 const toggleWound = (id: number) => {
   const next = new Set(woundBobbins.value)
@@ -194,7 +257,7 @@ const mergedColorGroups = computed(() => {
       const rowBelow = groups[rowIndex + 1]
       const overlappingGroups = rowBelow.filter(g =>
         g.color === group.color &&
-        !(g.endIndex < group.startIndex || g.startIndex > group.endIndex)
+        !(g.endIndex < group.startIndex - 1 || g.startIndex > group.endIndex + 1)
       )
 
       if (overlappingGroups.length > 0) {
@@ -429,7 +492,7 @@ const bobbinInfo = computed(() => {
 
   return Array.from(groupStitches.entries())
     .map(([groupId, info]) => {
-      const yarnLength = (info.count * gauge.value * errorMargin.value) + (2 * tailLength.value)
+      const yarnLength = (info.count * gauge.value * errorMargin.value) + headLength.value + tailLength.value
       const yarnLengthInches = Math.ceil(yarnLength)
       return {
         id: groupId,
@@ -441,6 +504,14 @@ const bobbinInfo = computed(() => {
       }
     })
     .sort((a, b) => a.id - b.id)
+})
+
+const sortedBobbinInfo = computed(() => {
+  return [...bobbinInfo.value].sort((a, b) => {
+    const aWound = woundBobbins.value.has(a.id) ? 1 : 0
+    const bWound = woundBobbins.value.has(b.id) ? 1 : 0
+    return aWound - bWound || a.id - b.id
+  })
 })
 
 const colorPaletteWithNames = computed(() => {
@@ -470,7 +541,8 @@ const colorPaletteWithNames = computed(() => {
       nameUsage.set(baseName, usage)
       return {
         color,
-        name: `${baseName} ${usage}`,
+        name: getNearestYarn(color).name,
+        yarn: getNearestYarn(color),
         hex: rgbaToHex(color),
         stitches: colorStitchCount.get(color) || 0
       }
@@ -478,7 +550,8 @@ const colorPaletteWithNames = computed(() => {
 
     return {
       color,
-      name: baseName,
+      name: getNearestYarn(color).name,
+      yarn: getNearestYarn(color),
       hex: rgbaToHex(color),
       stitches: colorStitchCount.get(color) || 0
     }
@@ -523,6 +596,20 @@ const printPage = () => {
     window.print()
   }
 }
+
+const getNearestYarn = (rgba: string) => {
+  const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+  if (!match) return { name: 'Unknown', r: 0, g: 0, b: 0 }
+  const r = parseInt(match[1]), g = parseInt(match[2]), b = parseInt(match[3])
+  return impeccableYarns.reduce((nearest, yarn) => {
+    const dist = Math.sqrt((r - yarn.r) ** 2 + (g - yarn.g) ** 2 + (b - yarn.b) ** 2)
+    const nearestDist = Math.sqrt((r - nearest.r) ** 2 + (g - nearest.g) ** 2 + (b - nearest.b) ** 2)
+    return dist < nearestDist ? yarn : nearest
+  })
+}
+
+const yarnToRgba = (yarn: { r: number, g: number, b: number }) =>
+  `rgba(${yarn.r},${yarn.g},${yarn.b},1)`
 </script>
 
 <template>
@@ -591,13 +678,23 @@ const printPage = () => {
             </p>
           </div>
           <div class="setting-item">
+            <label for="head-length">Head Length (in.)</label>
+            <div class="setting-control">
+              <input id="head-length" type="number" min="0" max="50" step="0.5" v-model.number="headLength"
+                class="threshold-input" />
+            </div>
+            <p class="setting-description">
+              Yarn left at the start of the bobbin
+            </p>
+          </div>
+          <div class="setting-item">
             <label for="tail-length">Tail Length (in.)</label>
             <div class="setting-control">
               <input id="tail-length" type="number" min="0" max="50" step="0.5" v-model.number="tailLength"
                 class="threshold-input" />
             </div>
             <p class="setting-description">
-              Leftover yarn on each side of color changes
+              Yarn left at the end of the bobbin
             </p>
           </div>
           <div class="setting-item">
@@ -636,10 +733,8 @@ const printPage = () => {
 
     <div v-if="gridData.length > 0" class="pattern-grid-container">
       <div class="pattern-grid">
-        <div v-for="(row, rowIndex) in gridData" :key="rowIndex"
-          class="pattern-row"
-          :class="{ 'pattern-row-active': currentRow === rowIndex }"
-          @click="currentRow = rowIndex">
+        <div v-for="(row, rowIndex) in gridData" :key="rowIndex" class="pattern-row"
+          :class="{ 'pattern-row-active': currentRow === rowIndex }" @click="currentRow = rowIndex">
           <div v-if="(gridData.length - rowIndex) % 2 === 0" class="row-counter row-counter-left">
             {{ gridData.length - rowIndex }}
           </div>
@@ -647,14 +742,14 @@ const printPage = () => {
             'grid-left': colIndex % 10 === 0 && colIndex !== 0,
             'grid-top': rowIndex % 10 === 0 && rowIndex !== 0
           }" :style="{
-              backgroundColor: color,
-              boxShadow: [
-                getCellBorders(rowIndex, colIndex).top ? `inset 0 2px 0 0 ${darkenColor(color)}` : null,
-                getCellBorders(rowIndex, colIndex).right ? `inset -2px 0 0 0 ${darkenColor(color)}` : null,
-                getCellBorders(rowIndex, colIndex).bottom ? `inset 0 -2px 0 0 ${darkenColor(color)}` : null,
-                getCellBorders(rowIndex, colIndex).left ? `inset 2px 0 0 0 ${darkenColor(color)}` : null
-              ].filter(Boolean).join(', ') || 'none'
-            }">
+            backgroundColor: color,
+            boxShadow: [
+              getCellBorders(rowIndex, colIndex).top ? `inset 0 2px 0 0 ${darkenColor(color)}` : null,
+              getCellBorders(rowIndex, colIndex).right ? `inset -2px 0 0 0 ${darkenColor(color)}` : null,
+              getCellBorders(rowIndex, colIndex).bottom ? `inset 0 -2px 0 0 ${darkenColor(color)}` : null,
+              getCellBorders(rowIndex, colIndex).left ? `inset 2px 0 0 0 ${darkenColor(color)}` : null
+            ].filter(Boolean).join(', ') || 'none'
+          }">
             <span v-if="shouldShowGroupLabel(rowIndex, colIndex)" class="group-label" :class="{
               'group-label-right': (gridData.length - rowIndex) % 2 === 1,
               'group-label-left': (gridData.length - rowIndex) % 2 === 0
@@ -675,13 +770,12 @@ const printPage = () => {
     </div>
 
     <div v-if="gridData.length > 0" class="bobbins-section">
-      <h3>Color Groups ({{ bobbinInfo.length }} total)</h3>
+      <h3>Color Groups ({{ sortedBobbinInfo.length }} total)</h3>
       <p class="bobbins-subheading">Max bobbins needed: {{ maxBobbinsInRow }}</p>
       <div class="bobbins-list">
-        <div v-for="bobbin in bobbinInfo" :key="bobbin.id" class="bobbin-item"
+        <div v-for="bobbin in sortedBobbinInfo" :key="bobbin.id" class="bobbin-item"
           :class="{ 'bobbin-wound': woundBobbins.has(bobbin.id) }">
-          <input type="checkbox" class="bobbin-checkbox"
-            :checked="woundBobbins.has(bobbin.id)"
+          <input type="checkbox" class="bobbin-checkbox" :checked="woundBobbins.has(bobbin.id)"
             @change="toggleWound(bobbin.id)" />
           <div class="bobbin-id" :style="{ backgroundColor: bobbin.color }">
             #{{ bobbin.id }}
@@ -705,7 +799,11 @@ const printPage = () => {
       <h3>Color Palette</h3>
       <div class="palette-grid">
         <div v-for="(item, index) in colorPaletteWithNames" :key="index" class="palette-item">
-          <div class="palette-swatch" :style="{ backgroundColor: item.color }" />
+          <div class="palette-swatches">
+            <div class="palette-swatch" :style="{ backgroundColor: item.color }" title="PNG color" />
+            <div class="palette-swatch palette-swatch-yarn" :style="{ backgroundColor: yarnToRgba(item.yarn) }"
+              title="Yarn color" />
+          </div>
           <div class="palette-info">
             <div class="palette-name">{{ item.name }}</div>
             <div class="palette-color">{{ item.hex }}</div>
@@ -1232,6 +1330,17 @@ const printPage = () => {
   border-radius: 0.25rem;
   border: 1px solid rgba(0, 0, 0, 0.2);
   flex-shrink: 0;
+}
+
+.palette-swatches {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.palette-swatch-yarn {
+  border-style: dashed;
 }
 
 .palette-info {
