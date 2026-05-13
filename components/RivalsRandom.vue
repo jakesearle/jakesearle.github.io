@@ -349,6 +349,8 @@ async function handleTab(char, index, event) {
   justify-content: center;
   flex-wrap: wrap;
   gap: 10px;
+  width: 80vw;
+  margin-left: calc(50% - (80vw/2));
 }
 
 .parallelogram {
