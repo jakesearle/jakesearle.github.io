@@ -1353,7 +1353,7 @@ const yarnToRgba = (yarn: { hex: string }) => {
 .pattern-grid {
   display: inline-block;
   border: 1px solid var(--vp-c-border);
-  width: 100%;
+  width: fit-content;
   padding: 1.25rem 3.125rem;
   border-radius: 0.75rem;
 }
