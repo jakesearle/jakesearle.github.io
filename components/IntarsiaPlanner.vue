@@ -388,26 +388,30 @@ const rgbaToHex = (rgba: string): string => {
   }).join('')
 }
 
-const darkenColor = (rgba: string, amount: number = 0.3): string => {
-  const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
-  if (!match) return rgba
+const darkenColor = (color: string, amount: number = 0.3): string => {
+  let r: number, g: number, b: number
 
-  const r = parseInt(match[1])
-  const g = parseInt(match[2])
-  const b = parseInt(match[3])
+  const hexMatch = color.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i)
+  const rgbMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+
+  if (hexMatch) {
+    r = parseInt(hexMatch[1], 16)
+    g = parseInt(hexMatch[2], 16)
+    b = parseInt(hexMatch[3], 16)
+  } else if (rgbMatch) {
+    r = parseInt(rgbMatch[1])
+    g = parseInt(rgbMatch[2])
+    b = parseInt(rgbMatch[3])
+  } else {
+    return color
+  }
 
   const brightness = (r + g + b) / 3
 
   if (brightness < 100) {
-    const newR = Math.min(255, r + 80)
-    const newG = Math.min(255, g + 80)
-    const newB = Math.min(255, b + 80)
-    return `rgb(${newR},${newG},${newB})`
+    return `rgb(${Math.min(255, r + 80)},${Math.min(255, g + 80)},${Math.min(255, b + 80)})`
   } else {
-    const newR = Math.max(0, Math.floor(r * (1 - amount)))
-    const newG = Math.max(0, Math.floor(g * (1 - amount)))
-    const newB = Math.max(0, Math.floor(b * (1 - amount)))
-    return `rgb(${newR},${newG},${newB})`
+    return `rgb(${Math.max(0, Math.floor(r * (1 - amount)))},${Math.max(0, Math.floor(g * (1 - amount)))},${Math.max(0, Math.floor(b * (1 - amount)))})`
   }
 }
 
@@ -536,13 +540,26 @@ const oklabColorDistance = (hex1: string, hex2: string): number => {
   const rgb1 = hexToRgb(hex1)
   const rgb2 = hexToRgb(hex2)
 
-  const oklab1 = rgbToOklab(rgb1.r, rgb1.g, rgb1.b)
-  const oklab2 = rgbToOklab(rgb2.r, rgb2.g, rgb2.b)
+  const lab1 = rgbToOklab(rgb1.r, rgb1.g, rgb1.b)
+  const lab2 = rgbToOklab(rgb2.r, rgb2.g, rgb2.b)
 
-  // Simple Euclidean distance in Oklab space
-  const dL = oklab1.L - oklab2.L
-  const da = oklab1.a - oklab2.a
-  const db = oklab1.b - oklab2.b
+  const hueEmphasis = 1.5 // increase to weight hue more heavily
+
+  // Convert to OKLCh to isolate chroma, then boost it
+  const C1 = Math.sqrt(lab1.a * lab1.a + lab1.b * lab1.b)
+  const h1 = Math.atan2(lab1.b, lab1.a)
+  const C2 = Math.sqrt(lab2.a * lab2.a + lab2.b * lab2.b)
+  const h2 = Math.atan2(lab2.b, lab2.a)
+
+  // Reconstruct boosted a/b from amplified chroma
+  const a1 = C1 * hueEmphasis * Math.cos(h1)
+  const b1 = C1 * hueEmphasis * Math.sin(h1)
+  const a2 = C2 * hueEmphasis * Math.cos(h2)
+  const b2 = C2 * hueEmphasis * Math.sin(h2)
+
+  const dL = lab1.L - lab2.L
+  const da = a1 - a2
+  const db = b1 - b2
 
   return Math.sqrt(dL * dL + da * da + db * db)
 }
@@ -915,16 +932,8 @@ const yarnToRgba = (yarn: { hex: string }) => {
           <div class="setting-item">
             <label>Available Yarn Colors</label>
             <div class="yarn-palette">
-              <div
-                v-for="yarn in impeccableYarns"
-                :key="yarn.name"
-                class="yarn-chip"
-                :title="yarn.name"
-              >
-                <div
-                  class="yarn-chip-swatch"
-                  :style="{ backgroundColor: yarn.hex }"
-                />
+              <div v-for="yarn in impeccableYarns" :key="yarn.name" class="yarn-chip" :title="yarn.name">
+                <div class="yarn-chip-swatch" :style="{ backgroundColor: yarn.hex }" />
                 <span class="yarn-chip-name">{{ yarn.name }}</span>
               </div>
             </div>
@@ -1002,7 +1011,8 @@ const yarnToRgba = (yarn: { hex: string }) => {
     <div v-if="gridData.length > 0" class="palette-section">
       <h3>Color Palette</h3>
       <div class="palette-grid">
-        <div v-for="(item, index) in colorPaletteWithNames" :key="index" class="palette-item" :id="`palette-${item.yarn.hex}`">
+        <div v-for="(item, index) in colorPaletteWithNames" :key="index" class="palette-item"
+          :id="`palette-${item.yarn.hex}`">
           <div class="palette-swatch-split">
             <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
               <!-- Top-left triangle (PNG color) -->
@@ -1257,7 +1267,6 @@ const yarnToRgba = (yarn: { hex: string }) => {
 }
 
 .setting-stat strong {
-  color: var(--vp-c-brand-1);
   font-family: var(--vp-font-family-mono);
 }
 
@@ -1301,8 +1310,6 @@ const yarnToRgba = (yarn: { hex: string }) => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
   gap: 0.5rem;
-  max-height: 20rem;
-  overflow-y: auto;
   padding: 0.5rem;
   background-color: var(--vp-c-bg-soft);
   border: 1px solid var(--vp-c-border);
@@ -1368,7 +1375,8 @@ const yarnToRgba = (yarn: { hex: string }) => {
 .pattern-cell {
   flex: 1;
   aspect-ratio: 1;
-  min-width: 0;
+  min-width: 1rem;
+  min-height: 1rem;
   border: 1px solid rgba(0, 0, 0, 0.1);
   position: relative;
 }
@@ -1674,5 +1682,4 @@ const yarnToRgba = (yarn: { hex: string }) => {
   font-size: 0.75rem;
   color: var(--vp-c-text-3);
 }
-
 </style>
