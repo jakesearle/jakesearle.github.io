@@ -2,8 +2,8 @@ import { defineConfig } from 'vitepress'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
-  title: "Jake Searle's Garden",
-  description: "A VitePress Site",
+  title: "Jake Searle",
+  // description: "A VitePress Site",
   cleanUrls: true,
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
