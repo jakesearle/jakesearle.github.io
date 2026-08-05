@@ -19,6 +19,7 @@ function getDefault() {
     { type: "water", name: "Orcane", level: 0, editing: false, enabled: true },
     { type: "water", name: "Etalus", level: 0, editing: false, enabled: true },
     { type: "water", name: "Slade", level: 0, editing: false, enabled: true },
+    { type: "water", name: "Gouie", level: 0, editing: false, enabled: true },
   ];
 }
 
