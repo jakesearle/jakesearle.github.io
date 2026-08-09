@@ -495,3 +495,6 @@ yarn-error.log
 # End of https://www.toptal.com/developers/gitignore/api/vue,node,macos,vuejs,visualstudiocode,pycharm,python
 
 scripts/**/cache/
+### VitePress ###
+.vitepress/cache/
+.vitepress/dist/

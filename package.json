@@ -10,7 +10,6 @@
     "build": "vitepress build",
     "preview": "vitepress preview",
     "test": "vitest",
-    
     "docs:build": "vitepress build"
   }
 }

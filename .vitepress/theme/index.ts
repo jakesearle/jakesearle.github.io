@@ -12,6 +12,7 @@ import PrintButton from '../../components/PrintButton.vue'
 import IntarsiaPlanner from '../../components/IntarsiaPlanner.vue'
 import KnightSpiralVisualizer from '../../components/KnightSpiralVisualizer.vue'
 import './custom.css'
+import WalkPlanner from '../../components/WalkPlanner.vue'
 
 export default {
   extends: DefaultTheme,
@@ -29,5 +30,6 @@ export default {
     app.component('PrintButton', PrintButton)
     app.component('IntarsiaPlanner', IntarsiaPlanner)
     app.component('KnightSpiralVisualizer', KnightSpiralVisualizer)
+    app.component('WalkPlanner', WalkPlanner)
   }
 } satisfies Theme
