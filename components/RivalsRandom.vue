@@ -202,6 +202,43 @@ const SORT_OPTIONS = [
   { value: "prob-asc", label: "Probability (low → high)" },
 ];
 
+// View preferences live under their own key so they can't corrupt the roster
+// save, and vice versa.
+const PREFS_KEY = "rivalsRandomPrefs";
+
+onMounted(() => {
+  const saved = localStorage.getItem(PREFS_KEY);
+  if (!saved) return;
+
+  let prefs;
+  try {
+    prefs = JSON.parse(saved);
+  } catch {
+    return; // corrupt save — keep defaults
+  }
+  if (!prefs || typeof prefs !== "object") return;
+
+  // Validate rather than trust: an unknown sortMode would blank the dropdown
+  if (SORT_OPTIONS.some((o) => o.value === prefs.sortMode)) {
+    sortMode.value = prefs.sortMode;
+  }
+  if (typeof prefs.invertRatio === "boolean") invertRatio.value = prefs.invertRatio;
+  if (typeof prefs.unselectedLast === "boolean") {
+    unselectedLast.value = prefs.unselectedLast;
+  }
+});
+
+watch([sortMode, invertRatio, unselectedLast], ([sort, invert, unselected]) => {
+  localStorage.setItem(
+    PREFS_KEY,
+    JSON.stringify({
+      sortMode: sort,
+      invertRatio: invert,
+      unselectedLast: unselected,
+    })
+  );
+});
+
 const showSettings = ref(false);
 const settingsCloseBtn = ref(null);
 let previouslyFocused = null;
