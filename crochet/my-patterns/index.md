@@ -1,7 +1,7 @@
 # My Patterns
 
-* [Orcane](./orcane/)
+- [Orcane](./orcane/)
 
 ## WIP
 
-* [Chibi Orcane](./chibi-orcane/)
+- [Chibi Orcane](./chibi-orcane/)

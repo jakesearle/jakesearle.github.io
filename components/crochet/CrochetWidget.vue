@@ -1,26 +1,21 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { rowInstruction } from '../utils/crochet'
+import { ref, computed } from 'vue';
+import { rowInstruction } from '../../utils/crochet';
 
-const start = ref<number | null>(null)
-const end = ref<number | null>(null)
+const start = ref<number | null>(null);
+const end = ref<number | null>(null);
 
 const result = computed(() => {
-  if (
-    start.value === null ||
-    end.value === null ||
-    start.value <= 0 ||
-    end.value <= 0
-  ) {
-    return ''
+  if (start.value === null || end.value === null || start.value <= 0 || end.value <= 0) {
+    return '';
   }
 
   try {
-    return `${rowInstruction(start.value, end.value)} (${end.value})`
+    return `${rowInstruction(start.value, end.value)} (${end.value})`;
   } catch (e) {
-    return (e as Error).message
+    return (e as Error).message;
   }
-})
+});
 </script>
 
 <template>
@@ -28,12 +23,12 @@ const result = computed(() => {
     <div class="inputs">
       <label>
         <span>Starting stitches</span>
-        <input type="number" v-model.number="start" min="1" placeholder="12" />
+        <input v-model.number="start" type="number" min="1" placeholder="12" />
       </label>
 
       <label>
         <span>Ending stitches</span>
-        <input type="number" v-model.number="end" min="1" placeholder="18" />
+        <input v-model.number="end" type="number" min="1" placeholder="18" />
       </label>
     </div>
 
@@ -73,7 +68,9 @@ input {
   border: 1px solid var(--vp-c-border);
   background: var(--vp-c-bg);
   color: var(--vp-c-text-1);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
   width: 140px;
 }
 

@@ -1,26 +1,26 @@
 @media print {
-    .aside-container {
-        display: none;
-    }
+  .aside-container {
+    display: none;
+  }
 
-    .VPLocalNav {
-        display: none;
-    }
+  .VPLocalNav {
+    display: none;
+  }
 
-    .vp-doc img {
-        display: block;
-        break-inside: avoid;
-        break-before: auto;
-        break-after: avoid;
-        max-height: 3in;
-        width: auto;
-    }
+  .vp-doc img {
+    display: block;
+    break-inside: avoid;
+    break-before: auto;
+    break-after: avoid;
+    max-height: 3in;
+    width: auto;
+  }
 
-    .vp-doc p:has(img) {
-        break-inside: avoid;
-    }
+  .vp-doc p:has(img) {
+    break-inside: avoid;
+  }
 
-    .vp-doc figure {
-        break-inside: avoid;
-    }
+  .vp-doc figure {
+    break-inside: avoid;
+  }
 }

@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["vitest/globals"],
+
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    // Unused locals/params are reported by ESLint as warnings instead, so a bit
+    // of dead code doesn't fail the build.
+
+    "jsx": "preserve",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+
+    // Vite/VitePress handle emit; this config exists purely for type checking.
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": [
+    "globals.d.ts",
+    "utils/**/*.ts",
+    "components/**/*.vue",
+    ".vitepress/**/*.ts",
+    ".vitepress/**/*.mts"
+  ],
+  "exclude": ["node_modules", ".vitepress/dist", ".vitepress/cache"]
+}

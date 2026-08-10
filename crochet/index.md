@@ -4,26 +4,26 @@ List of my crochet projects
 
 ## My Patterns!
 
-* [Orcane](./my-patterns/orcane/)
+- [Orcane](./my-patterns/orcane/)
 
 ## Pattern Notes
 
-* [Dr. Mario Viruses](./dr-mario/)
+- [Dr. Mario Viruses](./dr-mario/)
 
 ## WIP
 
-* [Chibi Orcane](./my-patterns/chibi-orcane/)
+- [Chibi Orcane](./my-patterns/chibi-orcane/)
 
 ## Tools
 
-* [Single Row](./tools/row-tool.md)
-* [Skeleton Tool](./tools/skeleton-tool.md)
-* [Vase Tool](./tools/vase-tool.md)
-* [Leaf Tool](./tools/leaf-tool.md)
-* [Whale Tool](./tools/whale-tool.md)
-* [Intarsia Planner](./tools/intarsia/)
+- [Single Row](./tools/row-tool.md)
+- [Skeleton Tool](./tools/skeleton-tool.md)
+- [Vase Tool](./tools/vase-tool.md)
+- [Leaf Tool](./tools/leaf-tool.md)
+- [Whale Tool](./tools/whale-tool.md)
+- [Intarsia Planner](./tools/intarsia/)
 
 ## Outside Tools
 
-* [How to write a crochet pattern](https://simplymadebyerin.com/2025/05/06/how-to-write-a-crochet-pattern-start-here/)
-* [Standard abbreviations](https://www.craftyarncouncil.com/standards/crochet-abbreviations)
+- [How to write a crochet pattern](https://simplymadebyerin.com/2025/05/06/how-to-write-a-crochet-pattern-start-here/)
+- [Standard abbreviations](https://www.craftyarncouncil.com/standards/crochet-abbreviations)

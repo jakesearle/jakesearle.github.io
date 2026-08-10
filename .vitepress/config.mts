@@ -1,8 +1,8 @@
-import { defineConfig } from 'vitepress'
+import { defineConfig } from 'vitepress';
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
-  title: "Jake Searle",
+  title: 'Jake Searle',
   // description: "A VitePress Site",
   cleanUrls: true,
   themeConfig: {
@@ -10,10 +10,8 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Rivals 2', link: '/rivals' },
-      { text: 'Crochet', link: '/crochet' }
+      { text: 'Crochet', link: '/crochet' },
     ],
-    socialLinks: [
-      { icon: 'github', link: 'https://https://github.com/jakesearle' }
-    ]
-  }
-})
+    socialLinks: [{ icon: 'github', link: 'https://github.com/jakesearle' }],
+  },
+});

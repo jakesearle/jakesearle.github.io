@@ -36,7 +36,7 @@ Make 4
 
 tail
 
-0. 18 stitches 
+0. 18 stitches
 1. 2[7sc, dec] (16)
 2. 16sc (16)
 3. 4[2sc, dec] (12)

@@ -2,24 +2,21 @@
   <div class="address-search">
     <input
       v-model="query"
+      type="text"
+      class="input-box"
+      placeholder="Enter address..."
       @input="onInput"
       @keydown.down="highlightNext"
       @keydown.up="highlightPrev"
       @keydown.enter.prevent="selectHighlighted"
-      type="text"
-      class="input-box"
-      placeholder="Enter address..."
     />
 
-    <ul
-      v-if="suggestions.length && showSuggestions"
-      class="suggestions"
-    >
+    <ul v-if="suggestions.length && showSuggestions" class="suggestions">
       <li
         v-for="(suggestion, index) in suggestions"
         :key="suggestion.place_id"
-        @click="selectSuggestion(suggestion)"
         :class="{ highlighted: index === highlightedIndex }"
+        @click="selectSuggestion(suggestion)"
       >
         {{ suggestion.display_name }}
       </li>
@@ -28,34 +25,34 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch } from 'vue';
 
-const query = ref('')
-const suggestions = ref([])
-const showSuggestions = ref(false)
-const highlightedIndex = ref(-1)
-let controller = null
-let debounceTimeout = null
+const query = ref('');
+const suggestions = ref([]);
+const showSuggestions = ref(false);
+const highlightedIndex = ref(-1);
+let controller = null;
+let debounceTimeout = null;
 
-const emit = defineEmits(['select'])
+const emit = defineEmits(['select']);
 
 const onInput = () => {
-  if (debounceTimeout) clearTimeout(debounceTimeout)
+  if (debounceTimeout) clearTimeout(debounceTimeout);
 
   debounceTimeout = setTimeout(() => {
-    fetchSuggestions()
-  }, 500)
-}
+    fetchSuggestions();
+  }, 500);
+};
 
 const fetchSuggestions = async () => {
   if (query.value.length < 3) {
-    suggestions.value = []
-    showSuggestions.value = false
-    return
+    suggestions.value = [];
+    showSuggestions.value = false;
+    return;
   }
 
-  if (controller) controller.abort()
-  controller = new AbortController()
+  if (controller) controller.abort();
+  controller = new AbortController();
 
   try {
     const res = await fetch(
@@ -66,48 +63,48 @@ const fetchSuggestions = async () => {
         headers: { 'Accept-Language': 'en' },
         signal: controller.signal,
       }
-    )
+    );
 
-    if (!res.ok) throw new Error('Failed to fetch suggestions')
+    if (!res.ok) throw new Error('Failed to fetch suggestions');
 
-    const data = await res.json()
-    suggestions.value = data
-    showSuggestions.value = true
-    highlightedIndex.value = -1
+    const data = await res.json();
+    suggestions.value = data;
+    showSuggestions.value = true;
+    highlightedIndex.value = -1;
   } catch (err) {
-    if (err.name !== 'AbortError') console.error('Search error:', err)
+    if (err.name !== 'AbortError') console.error('Search error:', err);
   }
-}
+};
 
 const selectSuggestion = (suggestion) => {
-  query.value = suggestion.display_name
-  suggestions.value = []
-  showSuggestions.value = false
-  highlightedIndex.value = -1
-  emit('select', suggestion)
-}
+  query.value = suggestion.display_name;
+  suggestions.value = [];
+  showSuggestions.value = false;
+  highlightedIndex.value = -1;
+  emit('select', suggestion);
+};
 
 const highlightNext = () => {
   if (highlightedIndex.value < suggestions.value.length - 1) {
-    highlightedIndex.value++
+    highlightedIndex.value++;
   }
-}
+};
 
 const highlightPrev = () => {
   if (highlightedIndex.value > 0) {
-    highlightedIndex.value--
+    highlightedIndex.value--;
   }
-}
+};
 
 const selectHighlighted = () => {
   if (highlightedIndex.value >= 0) {
-    selectSuggestion(suggestions.value[highlightedIndex.value])
+    selectSuggestion(suggestions.value[highlightedIndex.value]);
   }
-}
+};
 
 watch(query, () => {
-  showSuggestions.value = true
-})
+  showSuggestions.value = true;
+});
 </script>
 
 <style scoped>
@@ -162,4 +159,3 @@ watch(query, () => {
   color: var(--vp-c-text);
 }
 </style>
-

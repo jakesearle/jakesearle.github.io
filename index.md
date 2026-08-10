@@ -3,7 +3,7 @@
 layout: home
 
 hero:
-  name: "Jake Searle"
+  name: 'Jake Searle'
   # text: "A VitePress Site"
   # tagline: My great project tagline
   actions:
@@ -22,4 +22,3 @@ hero:
 #   - title: Feature C
 #     details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
 ---
-

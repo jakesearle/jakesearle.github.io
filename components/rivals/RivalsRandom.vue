@@ -1,26 +1,26 @@
 <script setup>
-import { reactive, watch, ref, computed, nextTick, onMounted, onUnmounted } from "vue";
-import { computeScaledWeights, pickWeighted, sortForDisplay } from "../utils/rivals";
+import { reactive, watch, ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
+import { computeScaledWeights, pickWeighted, sortForDisplay } from '../../utils/rivals';
 
 function getDefault() {
   return [
-    { type: "fire", name: "Zetterburn", level: 0, editing: false, enabled: true },
-    { type: "fire", name: "Clairen", level: 0, editing: false, enabled: true },
-    { type: "fire", name: "Loxodont", level: 0, editing: false, enabled: true },
-    { type: "fire", name: "Forsburn", level: 0, editing: false, enabled: true },
-    { type: "earth", name: "Kragg", level: 0, editing: false, enabled: true },
-    { type: "earth", name: "Maypul", level: 0, editing: false, enabled: true },
-    { type: "earth", name: "Olympia", level: 0, editing: false, enabled: true },
-    { type: "earth", name: "Galvan", level: 0, editing: false, enabled: true },
-    { type: "earth", name: "La Reina", level: 0, editing: false, enabled: true },
-    { type: "air", name: "Wrastor", level: 0, editing: false, enabled: true },
-    { type: "air", name: "Fleet", level: 0, editing: false, enabled: true },
-    { type: "air", name: "Absa", level: 0, editing: false, enabled: true },
-    { type: "water", name: "Ranno", level: 0, editing: false, enabled: true },
-    { type: "water", name: "Orcane", level: 0, editing: false, enabled: true },
-    { type: "water", name: "Etalus", level: 0, editing: false, enabled: true },
-    { type: "water", name: "Slade", level: 0, editing: false, enabled: true },
-    { type: "water", name: "Gouie", level: 0, editing: false, enabled: true },
+    { type: 'fire', name: 'Zetterburn', level: 0, editing: false, enabled: true },
+    { type: 'fire', name: 'Clairen', level: 0, editing: false, enabled: true },
+    { type: 'fire', name: 'Loxodont', level: 0, editing: false, enabled: true },
+    { type: 'fire', name: 'Forsburn', level: 0, editing: false, enabled: true },
+    { type: 'earth', name: 'Kragg', level: 0, editing: false, enabled: true },
+    { type: 'earth', name: 'Maypul', level: 0, editing: false, enabled: true },
+    { type: 'earth', name: 'Olympia', level: 0, editing: false, enabled: true },
+    { type: 'earth', name: 'Galvan', level: 0, editing: false, enabled: true },
+    { type: 'earth', name: 'La Reina', level: 0, editing: false, enabled: true },
+    { type: 'air', name: 'Wrastor', level: 0, editing: false, enabled: true },
+    { type: 'air', name: 'Fleet', level: 0, editing: false, enabled: true },
+    { type: 'air', name: 'Absa', level: 0, editing: false, enabled: true },
+    { type: 'water', name: 'Ranno', level: 0, editing: false, enabled: true },
+    { type: 'water', name: 'Orcane', level: 0, editing: false, enabled: true },
+    { type: 'water', name: 'Etalus', level: 0, editing: false, enabled: true },
+    { type: 'water', name: 'Slade', level: 0, editing: false, enabled: true },
+    { type: 'water', name: 'Gouie', level: 0, editing: false, enabled: true },
   ];
 }
 
@@ -29,7 +29,7 @@ const characters = reactive(getDefault());
 // localStorage doesn't exist during SSR, so hydrate on the client instead of
 // at setup time.
 onMounted(() => {
-  const saved = localStorage.getItem("characters");
+  const saved = localStorage.getItem('characters');
   if (!saved) return;
 
   let savedChars;
@@ -72,7 +72,7 @@ watch(
       level,
       enabled,
     }));
-    localStorage.setItem("characters", JSON.stringify(toSave));
+    localStorage.setItem('characters', JSON.stringify(toSave));
   },
   { deep: true }
 );
@@ -141,7 +141,7 @@ const characterProbabilities = computed(() => {
 
 function getCharPercent(name) {
   const found = characterProbabilities.value.find((c) => c.name === name);
-  return found ? found.percent : "0";
+  return found ? found.percent : '0';
 }
 
 function selectAll() {
@@ -154,9 +154,9 @@ function deselectAll() {
 
 // Unlock milestones — selecting a preset targets the characters still short of it
 const LEVEL_PRESETS = [
-  { level: 20, reward: "Steam achievement" },
-  { level: 50, reward: "Animal skin" },
-  { level: 100, reward: "Abyss skin" },
+  { level: 20, reward: 'Steam achievement' },
+  { level: 50, reward: 'Animal skin' },
+  { level: 100, reward: 'Abyss skin' },
 ];
 
 const levelPresets = computed(() =>
@@ -181,7 +181,7 @@ function resetData() {
 
 // Sorting is display-only — `characters` keeps its canonical order so saves and
 // "Reset all data" stay stable.
-const sortMode = ref("default"); // see SortMode in utils/rivals
+const sortMode = ref('default'); // see SortMode in utils/rivals
 const unselectedLast = ref(true);
 
 const displayedCharacters = computed(() =>
@@ -195,16 +195,16 @@ const displayedCharacters = computed(() =>
 );
 
 const SORT_OPTIONS = [
-  { value: "default", label: "Character Select Screen" },
-  { value: "desc", label: "Level (high → low)" },
-  { value: "asc", label: "Level (low → high)" },
-  { value: "prob-desc", label: "Probability (high → low)" },
-  { value: "prob-asc", label: "Probability (low → high)" },
+  { value: 'default', label: 'Character Select Screen' },
+  { value: 'desc', label: 'Level (high → low)' },
+  { value: 'asc', label: 'Level (low → high)' },
+  { value: 'prob-desc', label: 'Probability (high → low)' },
+  { value: 'prob-asc', label: 'Probability (low → high)' },
 ];
 
 // View preferences live under their own key so they can't corrupt the roster
 // save, and vice versa.
-const PREFS_KEY = "rivalsRandomPrefs";
+const PREFS_KEY = 'rivalsRandomPrefs';
 
 onMounted(() => {
   const saved = localStorage.getItem(PREFS_KEY);
@@ -216,14 +216,14 @@ onMounted(() => {
   } catch {
     return; // corrupt save — keep defaults
   }
-  if (!prefs || typeof prefs !== "object") return;
+  if (!prefs || typeof prefs !== 'object') return;
 
   // Validate rather than trust: an unknown sortMode would blank the dropdown
   if (SORT_OPTIONS.some((o) => o.value === prefs.sortMode)) {
     sortMode.value = prefs.sortMode;
   }
-  if (typeof prefs.invertRatio === "boolean") invertRatio.value = prefs.invertRatio;
-  if (typeof prefs.unselectedLast === "boolean") {
+  if (typeof prefs.invertRatio === 'boolean') invertRatio.value = prefs.invertRatio;
+  if (typeof prefs.unselectedLast === 'boolean') {
     unselectedLast.value = prefs.unselectedLast;
   }
 });
@@ -244,7 +244,7 @@ const settingsCloseBtn = ref(null);
 let previouslyFocused = null;
 
 function onKeydown(e) {
-  if (e.key === "Escape" && showSettings.value) showSettings.value = false;
+  if (e.key === 'Escape' && showSettings.value) showSettings.value = false;
 }
 
 // Move focus into the dialog on open, hand it back on close, and stop the page
@@ -252,22 +252,22 @@ function onKeydown(e) {
 watch(showSettings, async (open) => {
   if (open) {
     previouslyFocused = document.activeElement;
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = 'hidden';
     await nextTick();
     settingsCloseBtn.value?.focus();
   } else {
-    document.body.style.overflow = "";
+    document.body.style.overflow = '';
     previouslyFocused?.focus?.();
     previouslyFocused = null;
   }
 });
 
-onMounted(() => window.addEventListener("keydown", onKeydown));
+onMounted(() => window.addEventListener('keydown', onKeydown));
 
 onUnmounted(() => {
-  window.removeEventListener("keydown", onKeydown);
+  window.removeEventListener('keydown', onKeydown);
   clearInterval(flashingInterval);
-  document.body.style.overflow = "";
+  document.body.style.overflow = '';
 });
 
 const cardRefs = ref({});
@@ -275,7 +275,7 @@ const cardRefs = ref({});
 function scrollToCharacter(char) {
   const el = cardRefs.value[char.name];
   if (el) {
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 }
 
@@ -301,19 +301,29 @@ async function handleTab(char, index, event) {
 
 <template>
   <div class="random-row">
-    <div class="parallelogram-right" @click="pickRandomCharacter" :class="{ shuffling: isShuffling }">
+    <div
+      class="parallelogram-right"
+      :class="{ shuffling: isShuffling }"
+      @click="pickRandomCharacter"
+    >
       <div class="question">?</div>
     </div>
     <div v-if="selectedCharacter" class="parallelogram-left" :class="`${selectedCharacter.type}`">
-      <div class="selected-char-background" :style="{
-        backgroundImage: `url(/images/${selectedCharacter.name.replace(/ /g, '')}-2D.png)`,
-      }"></div>
+      <div
+        class="selected-char-background"
+        :style="{
+          backgroundImage: `url(/images/${selectedCharacter.name.replace(/ /g, '')}-2D.png)`,
+        }"
+      ></div>
       <div class="card-items">
-        <div class="name">
-          {{ selectedCharacter.name }} ({{ selectedCharacter.level }})
-        </div>
-        <button class="scroll-to-btn" @click="scrollToCharacter(selectedCharacter)"
-          title="Scroll to character">↓</button>
+        <div class="name">{{ selectedCharacter.name }} ({{ selectedCharacter.level }})</div>
+        <button
+          class="scroll-to-btn"
+          title="Scroll to character"
+          @click="scrollToCharacter(selectedCharacter)"
+        >
+          ↓
+        </button>
       </div>
     </div>
   </div>
@@ -330,28 +340,53 @@ async function handleTab(char, index, event) {
       </label>
 
       <label class="control-row">
-        <input type="checkbox" v-model="invertRatio" />
+        <input v-model="invertRatio" type="checkbox" />
         Invert probabilities
       </label>
     </div>
 
-    <button class="settings-btn" @click="showSettings = true" title="Settings" aria-label="Settings">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <button
+      class="settings-btn"
+      title="Settings"
+      aria-label="Settings"
+      @click="showSettings = true"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
         <path
-          d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z">
-        </path>
+          d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+        ></path>
         <circle cx="12" cy="12" r="3"></circle>
       </svg>
     </button>
   </div>
 
   <div v-if="showSettings" class="settings-popup" @click.self="showSettings = false">
-    <div class="settings-content" role="dialog" aria-modal="true" aria-labelledby="rivals-settings-title">
+    <div
+      class="settings-content"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="rivals-settings-title"
+    >
       <div class="settings-header">
         <h3 id="rivals-settings-title">Settings</h3>
-        <button ref="settingsCloseBtn" @click="showSettings = false" class="close-btn"
-          aria-label="Close settings">×</button>
+        <button
+          ref="settingsCloseBtn"
+          class="close-btn"
+          aria-label="Close settings"
+          @click="showSettings = false"
+        >
+          ×
+        </button>
       </div>
       <div class="settings-body">
         <div class="setting-item">
@@ -361,8 +396,13 @@ async function handleTab(char, index, event) {
               <span class="preset-title">Select all characters</span>
             </button>
 
-            <button v-for="preset in levelPresets" :key="preset.level" class="action-btn preset-btn"
-              :disabled="preset.remaining === 0" @click="selectUnderLevel(preset.level)">
+            <button
+              v-for="preset in levelPresets"
+              :key="preset.level"
+              class="action-btn preset-btn"
+              :disabled="preset.remaining === 0"
+              @click="selectUnderLevel(preset.level)"
+            >
               <span class="preset-title">Select all under level {{ preset.level }}</span>
               <span class="preset-reward">{{ preset.reward }}</span>
               <span class="preset-count">{{ preset.remaining }} left</span>
@@ -373,15 +413,14 @@ async function handleTab(char, index, event) {
             </button>
           </div>
           <p class="setting-description">
-            Each preset replaces your current selection. The level presets pick only the
-            characters still below that level, so the randomizer draws from the ones you
-            haven't unlocked yet.
+            Each preset replaces your current selection. The level presets pick only the characters
+            still below that level, so the randomizer draws from the ones you haven't unlocked yet.
           </p>
         </div>
 
         <div class="setting-item">
           <label class="control-row">
-            <input type="checkbox" v-model="unselectedLast" />
+            <input v-model="unselectedLast" type="checkbox" />
             Show unselected last
           </label>
           <p class="setting-description">
@@ -399,45 +438,76 @@ async function handleTab(char, index, event) {
           </p>
         </div>
 
-        <button @click="showSettings = false" class="save-btn">Done</button>
+        <button class="save-btn" @click="showSettings = false">Done</button>
       </div>
     </div>
   </div>
 
   <div class="character-list">
-    <div v-for="(char, index) in displayedCharacters" :key="char.name" :ref="el => { if (el) cardRefs[char.name] = el }"
-      class="parallelogram" :class="[`${char.type}`, { disabled: !char.enabled }]">
-      <div class="char-background" :style="{
-        backgroundImage: `url(/images/${char.name.replace(/ /g, '')}-2D.png)`,
-      }"></div>
+    <div
+      v-for="(char, index) in displayedCharacters"
+      :key="char.name"
+      :ref="
+        (el) => {
+          if (el) cardRefs[char.name] = el;
+        }
+      "
+      class="parallelogram"
+      :class="[`${char.type}`, { disabled: !char.enabled }]"
+    >
+      <div
+        class="char-background"
+        :style="{
+          backgroundImage: `url(/images/${char.name.replace(/ /g, '')}-2D.png)`,
+        }"
+      ></div>
       <div class="card-items">
         <div class="name">
           <span class="char-name">{{ char.name }}</span>
-          <span class="char-percent">{{ char.enabled ? `${getCharPercent(char.name)}%` : '—' }}</span>
-          <button class="toggle-btn" :class="{ 'toggle-btn--off': !char.enabled }" @click="toggleEnabled(char)"
-            :title="char.enabled ? 'Exclude from randomizer' : 'Include in randomizer'">{{ char.enabled ? '✓' : '✗'
-            }}</button>
+          <span class="char-percent">
+            {{ char.enabled ? `${getCharPercent(char.name)}%` : '—' }}
+          </span>
+          <button
+            class="toggle-btn"
+            :class="{ 'toggle-btn--off': !char.enabled }"
+            :title="char.enabled ? 'Exclude from randomizer' : 'Include in randomizer'"
+            @click="toggleEnabled(char)"
+          >
+            {{ char.enabled ? '✓' : '✗' }}
+          </button>
         </div>
         <div class="controls-container">
           <div class="controls">
-            <button :style="{ visibility: char.level > 0 ? 'visible' : 'hidden' }" @click="decrement(char)"
-              :disabled="!char.enabled">−</button>
+            <button
+              :style="{ visibility: char.level > 0 ? 'visible' : 'hidden' }"
+              :disabled="!char.enabled"
+              @click="decrement(char)"
+            >
+              −
+            </button>
 
             <div class="level-display" @click="startEditing(char)">
               <span v-if="!char.editing">{{ char.level }}</span>
-              <input v-model.number="char.level" :data-name="char.name" @focus="startEditing(char)"
-                @blur="char.editing = false" @keyup.enter="char.editing = false"
-                @keydown.tab="handleTab(char, index, $event)" @keydown.esc="char.editing = false" inputmode="numeric"
-                enterkeyhint="next" type="number" />
+              <input
+                v-model.number="char.level"
+                :data-name="char.name"
+                inputmode="numeric"
+                enterkeyhint="next"
+                type="number"
+                @focus="startEditing(char)"
+                @blur="char.editing = false"
+                @keyup.enter="char.editing = false"
+                @keydown.tab="handleTab(char, index, $event)"
+                @keydown.esc="char.editing = false"
+              />
             </div>
 
-            <button @click="increment(char)" :disabled="!char.enabled">+</button>
+            <button :disabled="!char.enabled" @click="increment(char)">+</button>
           </div>
         </div>
       </div>
     </div>
   </div>
-
 </template>
 
 <style scoped>
@@ -490,7 +560,9 @@ async function handleTab(char, index, event) {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.25s, border-color 0.25s;
+  transition:
+    background-color 0.25s,
+    border-color 0.25s;
 }
 
 .settings-btn:hover {
@@ -552,7 +624,9 @@ async function handleTab(char, index, event) {
   align-items: center;
   justify-content: center;
   border-radius: 0.25rem;
-  transition: background-color 0.25s, color 0.25s;
+  transition:
+    background-color 0.25s,
+    color 0.25s;
 }
 
 .close-btn:hover {
@@ -586,7 +660,9 @@ async function handleTab(char, index, event) {
   font-size: 0.9375rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.25s, border-color 0.25s;
+  transition:
+    background-color 0.25s,
+    border-color 0.25s;
 }
 
 .save-btn:hover {
@@ -681,7 +757,7 @@ async function handleTab(char, index, event) {
   flex-wrap: wrap;
   gap: 10px;
   width: 80vw;
-  margin-left: calc(50% - (80vw/2));
+  margin-left: calc(50% - (80vw / 2));
 }
 
 .parallelogram {
@@ -694,7 +770,9 @@ async function handleTab(char, index, event) {
   color: var(--vp-c-white);
   border-color: var(--vp-c-white);
   position: relative;
-  transition: opacity 0.2s ease, filter 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    filter 0.2s ease;
 }
 
 /* Disabled state: dim and desaturate the whole card */
@@ -865,7 +943,9 @@ async function handleTab(char, index, event) {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
   line-height: 1;
   padding: 0;
   margin-right: 2px;
@@ -898,7 +978,10 @@ async function handleTab(char, index, event) {
   color: var(--vp-c-text-1);
   font-size: 0.875rem;
   cursor: pointer;
-  transition: background-color 0.25s, border-color 0.25s, color 0.25s;
+  transition:
+    background-color 0.25s,
+    border-color 0.25s,
+    color 0.25s;
 }
 
 .action-btn:hover {
@@ -967,7 +1050,9 @@ async function handleTab(char, index, event) {
   cursor: pointer;
   line-height: 1;
   padding: 0;
-  transition: background 0.15s ease, transform 0.15s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
   margin: 4px;
 }
 

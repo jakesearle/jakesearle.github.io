@@ -35,13 +35,18 @@
 function buildSpiral(total) {
   const sx = new Int32Array(total);
   const sy = new Int32Array(total);
-  let x = 0, y = 0, dx = 0, dy = -1;
+  let x = 0,
+    y = 0,
+    dx = 0,
+    dy = -1;
   for (let i = 0; i < total; i++) {
     sx[i] = x;
     sy[i] = y;
     // Turn condition for a square spiral
     if (x === y || (x < 0 && x === -y) || (x > 0 && x === 1 - y)) {
-      const t = dx; dx = -dy; dy = t;
+      const t = dx;
+      dx = -dy;
+      dy = t;
     }
     x += dx;
     y += dy;
@@ -68,7 +73,8 @@ function buildCoordMap(sx, sy, total) {
 // Returns an array of attacked cell indices (within the spiral).
 // ---------------------------------------------------------------------------
 function computeAttacks(idx, sx, sy, coordMap, OFFSET, piece) {
-  const kx = sx[idx], ky = sy[idx];
+  const kx = sx[idx],
+    ky = sy[idx];
   const attacked = [];
 
   if (piece.type === 'leaper') {
@@ -79,7 +85,8 @@ function computeAttacks(idx, sx, sy, coordMap, OFFSET, piece) {
     }
   } else if (piece.type === 'slider') {
     for (const [ddx, ddy] of piece.moves) {
-      let nx = kx + ddx, ny = ky + ddy;
+      let nx = kx + ddx,
+        ny = ky + ddy;
       while (true) {
         const key = (ny + OFFSET) * 65536 + (nx + OFFSET);
         const target = coordMap.get(key);
@@ -115,9 +122,9 @@ function simulate(config) {
   // we never need to look before the cursor.
   const cursors = new Int32Array(numArmies);
 
-  let turn = 0;       // which army's turn it is
-  let placed = 0;     // total knights placed so far
-  let stalled = 0;    // armies that can't place (should never happen in practice)
+  let turn = 0; // which army's turn it is
+  let placed = 0; // total knights placed so far
+  let stalled = 0; // armies that can't place (should never happen in practice)
 
   const PROGRESS_INTERVAL = Math.max(1000, Math.floor(totalCells / 100));
   let nextProgress = PROGRESS_INTERVAL;
@@ -129,14 +136,21 @@ function simulate(config) {
     // We combine all other-army attack masks with OR on the fly.
     let found = -1;
     for (let i = cursors[a]; i < totalCells; i++) {
-      if (cellState[i] !== 0) continue;  // occupied
+      if (cellState[i] !== 0) continue; // occupied
 
       // Check attacks from all other armies
       let blocked = false;
       for (let b = 0; b < numArmies; b++) {
-        if (b !== a && attacked[b][i]) { blocked = true; break; }
+        if (b !== a && attacked[b][i]) {
+          blocked = true;
+          break;
+        }
       }
-      if (!blocked) { found = i; cursors[a] = i + 1; break; }
+      if (!blocked) {
+        found = i;
+        cursors[a] = i + 1;
+        break;
+      }
     }
 
     if (found === -1) {

@@ -1,3 +1,7 @@
+<script setup>
+import PrintButton from '../../../components/shared/PrintButton.vue'
+</script>
+
 # Orcane
 
 <PrintButton />
