@@ -52,7 +52,7 @@ const impeccableYarns = [
   { "name": "Lavender", "hex": "#b297ca" },
   { "name": "Lippy", "hex": "#e60078" },
   { "name": "Misty Blue", "hex": "#9db8c3" },
-  { "name": "Navy Blue", "hex": "#3e2f43" },
+  { "name": "Navy Blue", "hex": "#2D304C" },
   { "name": "Orange Crush", "hex": "#fa340a" },
   { "name": "Pale Gray", "hex": "#9d9e9e" },
   { "name": "Petunia", "hex": "#cbd3e2" },
