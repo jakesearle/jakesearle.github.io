@@ -1,5 +1,6 @@
 <script setup>
-import { reactive, watch, ref, computed, nextTick } from "vue";
+import { reactive, watch, ref, computed, nextTick, onMounted, onUnmounted } from "vue";
+import { computeScaledWeights, pickWeighted, sortForDisplay } from "../utils/rivals";
 
 function getDefault() {
   return [
@@ -23,15 +24,30 @@ function getDefault() {
   ];
 }
 
-const saved = localStorage.getItem("characters");
-var savedChars = saved ? JSON.parse(saved) : getDefault();
-if (savedChars.length !== getDefault().length) {
-  savedChars = getDefault();
-}
-// Backfill `enabled` for saves that predate this feature
-savedChars = savedChars.map((c) => ({ enabled: true, ...c }));
+const characters = reactive(getDefault());
 
-const characters = reactive(savedChars);
+// localStorage doesn't exist during SSR, so hydrate on the client instead of
+// at setup time.
+onMounted(() => {
+  const saved = localStorage.getItem("characters");
+  if (!saved) return;
+
+  let savedChars;
+  try {
+    savedChars = JSON.parse(saved);
+  } catch {
+    return; // corrupt save — keep defaults
+  }
+
+  if (!Array.isArray(savedChars) || savedChars.length !== characters.length) return;
+
+  characters.splice(
+    0,
+    characters.length,
+    // Backfill `enabled` for saves that predate this feature
+    ...savedChars.map((c) => ({ editing: false, enabled: true, ...c }))
+  );
+});
 
 function increment(char) {
   char.level++;
@@ -65,36 +81,22 @@ const invertRatio = ref(false);
 const selectedCharacter = ref(null);
 let flashingInterval = null;
 
-// Returns scaled integer weights for eligible chars.
-// Normal:   weight = level (level-0 excluded unless all are 0)
-// Inverted: weight = 1 / (level + 1), scaled up to integers so ratios
-//           mirror normal mode in reverse.
-function computeScaledWeights(eligibleChars) {
-  const rawWeights = eligibleChars.map((char) => {
-    if (char.level === 0 && !invertRatio.value) return 0;
-    return invertRatio.value ? 1 / (char.level + 1) : char.level;
-  });
-
-  const positiveWeights = rawWeights.filter((w) => w > 0);
-  if (positiveWeights.length === 0) return rawWeights.map(() => 0);
-
-  const minWeight = Math.min(...positiveWeights);
-  return rawWeights.map((w) => (w === 0 ? 0 : Math.round(w / minWeight)));
-}
-
 const isShuffling = ref(false);
+
+function weightsFor(eligibleChars) {
+  return computeScaledWeights(
+    eligibleChars.map((c) => c.level),
+    invertRatio.value
+  );
+}
 
 function pickRandomCharacter() {
   if (isShuffling.value) return;
 
   const eligibleChars = characters.filter((c) => c.enabled);
-  const scaledWeights = computeScaledWeights(eligibleChars);
+  const scaledWeights = weightsFor(eligibleChars);
 
-  const weightedPool = eligibleChars.flatMap((char, i) =>
-    Array(scaledWeights[i]).fill(char)
-  );
-
-  if (weightedPool.length === 0) {
+  if (eligibleChars.length === 0) {
     selectedCharacter.value = null;
     return;
   }
@@ -113,7 +115,7 @@ function pickRandomCharacter() {
 
     if (flashCount > 5) {
       clearInterval(flashingInterval);
-      selectedCharacter.value = weightedPool[Math.floor(Math.random() * weightedPool.length)];
+      selectedCharacter.value = pickWeighted(eligibleChars, scaledWeights);
       isShuffling.value = false;
     }
   }, 75);
@@ -121,7 +123,7 @@ function pickRandomCharacter() {
 
 const characterProbabilities = computed(() => {
   const eligibleChars = characters.filter((c) => c.enabled);
-  const scaledWeights = computeScaledWeights(eligibleChars);
+  const scaledWeights = weightsFor(eligibleChars);
 
   const weightMap = Object.fromEntries(
     eligibleChars.map((char, i) => [char.name, scaledWeights[i]])
@@ -150,10 +152,86 @@ function deselectAll() {
   characters.forEach((c) => (c.enabled = false));
 }
 
+// Unlock milestones — selecting a preset targets the characters still short of it
+const LEVEL_PRESETS = [
+  { level: 20, reward: "Steam achievement" },
+  { level: 50, reward: "Animal skin" },
+  { level: 100, reward: "Abyss skin" },
+];
+
+const levelPresets = computed(() =>
+  LEVEL_PRESETS.map((preset) => ({
+    ...preset,
+    remaining: characters.filter((c) => c.level < preset.level).length,
+  }))
+);
+
+function selectUnderLevel(threshold) {
+  characters.forEach((c) => (c.enabled = c.level < threshold));
+}
+
 function resetData() {
+  // Now one click away inside the modal, so guard the wipe
+  if (!confirm("Reset every character's level and re-enable them all?")) return;
   const defaults = getDefault();
   characters.splice(0, characters.length, ...defaults);
+  // The banner holds a reference to a spliced-out object, so drop it
+  selectedCharacter.value = null;
 }
+
+// Sorting is display-only — `characters` keeps its canonical order so saves and
+// "Reset all data" stay stable.
+const sortMode = ref("default"); // see SortMode in utils/rivals
+const unselectedLast = ref(true);
+
+const displayedCharacters = computed(() =>
+  sortForDisplay(
+    characters,
+    sortMode.value,
+    unselectedLast.value,
+    // characterProbabilities is built in `characters` order, so it lines up
+    characterProbabilities.value.map((p) => p.percent)
+  )
+);
+
+const SORT_OPTIONS = [
+  { value: "default", label: "Character Select Screen" },
+  { value: "desc", label: "Level (high → low)" },
+  { value: "asc", label: "Level (low → high)" },
+  { value: "prob-desc", label: "Probability (high → low)" },
+  { value: "prob-asc", label: "Probability (low → high)" },
+];
+
+const showSettings = ref(false);
+const settingsCloseBtn = ref(null);
+let previouslyFocused = null;
+
+function onKeydown(e) {
+  if (e.key === "Escape" && showSettings.value) showSettings.value = false;
+}
+
+// Move focus into the dialog on open, hand it back on close, and stop the page
+// behind the overlay from scrolling.
+watch(showSettings, async (open) => {
+  if (open) {
+    previouslyFocused = document.activeElement;
+    document.body.style.overflow = "hidden";
+    await nextTick();
+    settingsCloseBtn.value?.focus();
+  } else {
+    document.body.style.overflow = "";
+    previouslyFocused?.focus?.();
+    previouslyFocused = null;
+  }
+});
+
+onMounted(() => window.addEventListener("keydown", onKeydown));
+
+onUnmounted(() => {
+  window.removeEventListener("keydown", onKeydown);
+  clearInterval(flashingInterval);
+  document.body.style.overflow = "";
+});
 
 const cardRefs = ref({});
 
@@ -177,7 +255,9 @@ async function startEditing(char) {
 async function handleTab(char, index, event) {
   event.preventDefault();
   char.editing = false;
-  const next = event.shiftKey ? characters[index - 1] : characters[index + 1];
+  // Tab follows what's on screen, so walk the sorted list rather than `characters`
+  const list = displayedCharacters.value;
+  const next = event.shiftKey ? list[index - 1] : list[index + 1];
   if (next) startEditing(next);
 }
 </script>
@@ -202,14 +282,93 @@ async function handleTab(char, index, event) {
   </div>
 
   <div class="randomizer-controls">
-    <label>
-      <input type="checkbox" v-model="invertRatio" />
-      Invert probabilities
-    </label>
+    <div class="control-stack">
+      <label class="control-row">
+        Sort by
+        <select v-model="sortMode">
+          <option v-for="option in SORT_OPTIONS" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </option>
+        </select>
+      </label>
+
+      <label class="control-row">
+        <input type="checkbox" v-model="invertRatio" />
+        Invert probabilities
+      </label>
+    </div>
+
+    <button class="settings-btn" @click="showSettings = true" title="Settings" aria-label="Settings">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path
+          d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z">
+        </path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+    </button>
+  </div>
+
+  <div v-if="showSettings" class="settings-popup" @click.self="showSettings = false">
+    <div class="settings-content" role="dialog" aria-modal="true" aria-labelledby="rivals-settings-title">
+      <div class="settings-header">
+        <h3 id="rivals-settings-title">Settings</h3>
+        <button ref="settingsCloseBtn" @click="showSettings = false" class="close-btn"
+          aria-label="Close settings">×</button>
+      </div>
+      <div class="settings-body">
+        <div class="setting-item">
+          <span class="setting-label">Presets</span>
+          <div class="setting-control setting-control--column">
+            <button class="action-btn preset-btn" @click="selectAll">
+              <span class="preset-title">Select all characters</span>
+            </button>
+
+            <button v-for="preset in levelPresets" :key="preset.level" class="action-btn preset-btn"
+              :disabled="preset.remaining === 0" @click="selectUnderLevel(preset.level)">
+              <span class="preset-title">Select all under level {{ preset.level }}</span>
+              <span class="preset-reward">{{ preset.reward }}</span>
+              <span class="preset-count">{{ preset.remaining }} left</span>
+            </button>
+
+            <button class="action-btn preset-btn" @click="deselectAll">
+              <span class="preset-title">Deselect all characters</span>
+            </button>
+          </div>
+          <p class="setting-description">
+            Each preset replaces your current selection. The level presets pick only the
+            characters still below that level, so the randomizer draws from the ones you
+            haven't unlocked yet.
+          </p>
+        </div>
+
+        <div class="setting-item">
+          <label class="control-row">
+            <input type="checkbox" v-model="unselectedLast" />
+            Show unselected last
+          </label>
+          <p class="setting-description">
+            Move characters you've excluded to the end of the list instead of leaving them in place
+          </p>
+        </div>
+
+        <div class="setting-item">
+          <span class="setting-label">Reset</span>
+          <div class="setting-control">
+            <button class="action-btn action-btn--danger" @click="resetData">Reset all data</button>
+          </div>
+          <p class="setting-description">
+            Set every level back to 0 and re-enable all characters. This can't be undone.
+          </p>
+        </div>
+
+        <button @click="showSettings = false" class="save-btn">Done</button>
+      </div>
+    </div>
   </div>
 
   <div class="character-list">
-    <div v-for="(char, index) in characters" :key="char.name" :ref="el => { if (el) cardRefs[char.name] = el }"
+    <div v-for="(char, index) in displayedCharacters" :key="char.name" :ref="el => { if (el) cardRefs[char.name] = el }"
       class="parallelogram" :class="[`${char.type}`, { disabled: !char.enabled }]">
       <div class="char-background" :style="{
         backgroundImage: `url(/images/${char.name.replace(/ /g, '')}-2D.png)`,
@@ -242,13 +401,6 @@ async function handleTab(char, index, event) {
     </div>
   </div>
 
-  <div class="bottom-actions">
-    <button class="text-btn" @click="selectAll">Select all</button>
-    <button class="text-btn" @click="deselectAll">Deselect all</button>
-  </div>
-  <div class="bottom-actions">
-    <button class="text-btn" @click="resetData">Reset all data</button>
-  </div>
 </template>
 
 <style scoped>
@@ -261,7 +413,148 @@ async function handleTab(char, index, event) {
 }
 
 .randomizer-controls {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 8px;
+}
+
+.control-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.control-row select {
+  border: 1px solid var(--vp-c-border, #ccc);
+  border-radius: 4px;
+  background-color: var(--vp-c-bg-soft, transparent);
+  color: inherit;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.settings-btn {
+  flex-shrink: 0;
+  background-color: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  border: 1px solid var(--vp-c-border);
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.25s, border-color 0.25s;
+}
+
+.settings-btn:hover {
+  background-color: var(--vp-c-bg-mute);
+  border-color: var(--vp-c-brand-1);
+}
+
+.settings-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.settings-content {
+  background-color: var(--vp-c-bg);
+  border: 1px solid var(--vp-c-border);
+  border-radius: 0.75rem;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.3);
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--vp-c-border);
+}
+
+.settings-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--vp-c-text-2);
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.25rem;
+  transition: background-color 0.25s, color 0.25s;
+}
+
+.close-btn:hover {
+  background-color: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+}
+
+.settings-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.setting-item {
+  margin-bottom: 1.25rem;
+}
+
+.setting-description {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--vp-c-text-3);
+}
+
+.save-btn {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 0.5rem;
+  background-color: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.25s, border-color 0.25s;
+}
+
+.save-btn:hover {
+  background-color: var(--vp-c-bg-mute);
+  border-color: var(--vp-c-brand-1);
 }
 
 .parallelogram-right {
@@ -552,26 +845,78 @@ async function handleTab(char, index, event) {
   color: rgba(255, 255, 255, 0.5);
 }
 
-.bottom-actions {
+.setting-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+  margin-bottom: 0.5rem;
+}
+
+.action-btn {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 0.5rem;
+  background-color: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.25s, border-color 0.25s, color 0.25s;
+}
+
+.action-btn:hover {
+  background-color: var(--vp-c-bg-mute);
+  border-color: var(--vp-c-brand-1);
+}
+
+.action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.action-btn:disabled:hover {
+  background-color: var(--vp-c-bg-soft);
+  border-color: var(--vp-c-border);
+}
+
+.setting-control {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.75rem 2rem;
-  margin-top: 2rem;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-.text-btn {
-  background: none;
-  border: none;
-  color: var(--vp-c-brand, #646cff);
-  cursor: pointer;
-  font-size: 1rem;
-  text-decoration: underline;
-  padding: 0;
+.setting-control--column {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
 }
 
-.text-btn:hover {
-  color: var(--vp-c-brand-light, #747bff);
+.preset-btn {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.preset-title {
+  font-weight: 600;
+}
+
+.preset-reward {
+  color: var(--vp-c-text-2);
+}
+
+.preset-count {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--vp-c-text-3);
+  white-space: nowrap;
+}
+
+.action-btn--danger:hover {
+  border-color: var(--vp-c-danger-1, #d64040);
+  color: var(--vp-c-danger-1, #d64040);
 }
 
 .scroll-to-btn {
