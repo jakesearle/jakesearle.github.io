@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 
 type WeatherType = 'sunny' | 'cloudy' | 'rainy' | 'snowy' | 'windy';
 type ChunkStatus = 'good' | 'ok' | 'bad';
@@ -45,6 +45,7 @@ interface DayForecast {
   tempLow: number;
   chunkStarts: number[]; // one per 30-minute slot, used to lay out the time axis
   segments: Segment[];
+  isToday: boolean;
 }
 
 const STORAGE_KEY = 'dogWalkPlannerSettings';
@@ -139,6 +140,25 @@ const minutesToTick = (mins: number): string => {
   const period = h24 >= 12 ? 'p' : 'a';
   return `${h24 % 12 || 12}${period}`;
 };
+
+const currentMinutes = (): number => {
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes();
+};
+
+// Ticks upward every minute so the "now" line drifts across today's track live
+const nowMinutes = ref(currentMinutes());
+let nowInterval: ReturnType<typeof setInterval> | undefined;
+
+// Where today's red "now" line sits, as a percentage across the visible time range
+const nowLinePercent = computed<number | null>(() => {
+  const earliestMin = timeToMinutes(settings.value.earliestWalk);
+  const latestMin = timeToMinutes(settings.value.latestWalk);
+  const range = latestMin - earliestMin;
+  if (range <= 0) return null;
+  const pct = ((nowMinutes.value - earliestMin) / range) * 100;
+  return pct >= 0 && pct <= 100 ? pct : null;
+});
 
 interface Note {
   status: ChunkStatus;
@@ -339,6 +359,7 @@ const fetchForecast = async () => {
       return i === undefined ? null : (arr[i] ?? null);
     };
 
+    const today = new Date();
     weekPlan.value = daily.time.map((dateStr: string, i: number) => {
       const date = new Date(`${dateStr}T00:00:00`);
       const sunriseMin = isoTimeToMinutes(daily.sunrise[i]);
@@ -389,6 +410,7 @@ const fetchForecast = async () => {
         tempLow: Math.round(daily.temperature_2m_min[i]),
         chunkStarts: chunks.map((c) => c.startMin),
         segments: mergeIntoSegments(chunks),
+        isToday: date.toDateString() === today.toDateString(),
       };
     });
   } catch (e) {
@@ -432,10 +454,14 @@ onMounted(() => {
   loadSettings();
   fetchForecast();
   window.addEventListener('keydown', onKeydown);
+  nowInterval = setInterval(() => {
+    nowMinutes.value = currentMinutes();
+  }, 60_000);
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown);
+  clearInterval(nowInterval);
 });
 </script>
 
@@ -561,7 +587,7 @@ onUnmounted(() => {
         <div v-for="plan in weekPlan" :key="plan.date" class="day-block">
           <div class="day-header">
             <div class="day-name">
-              {{ plan.day }}
+              {{ plan.isToday ? 'Today' : plan.day }}
               <span class="day-date">{{ plan.date }}</span>
             </div>
             <div class="day-meta">
@@ -635,27 +661,38 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="track" :style="{ '--chunk-count': plan.chunkStarts.length }">
-            <button
-              v-for="seg in plan.segments"
-              :key="seg.startMin"
-              type="button"
-              class="segment"
-              :class="[seg.status, { selected: isSelected(plan, seg) }]"
-              :style="{ gridColumn: `span ${seg.span}` }"
-              :aria-label="segmentLabel(seg)"
-              :aria-pressed="isSelected(plan, seg)"
-              @click="selectSegment(plan, seg)"
-            ></button>
-          </div>
+          <div class="day-track">
+            <div class="segment-track">
+              <div class="track" :style="{ '--chunk-count': plan.chunkStarts.length }">
+                <button
+                  v-for="seg in plan.segments"
+                  :key="seg.startMin"
+                  type="button"
+                  class="segment"
+                  :class="[seg.status, { selected: isSelected(plan, seg) }]"
+                  :style="{ gridColumn: `span ${seg.span}` }"
+                  :aria-label="segmentLabel(seg)"
+                  :aria-pressed="isSelected(plan, seg)"
+                  @click="selectSegment(plan, seg)"
+                ></button>
+              </div>
 
-          <div
-            class="track tick-row"
-            :style="{ '--chunk-count': plan.chunkStarts.length }"
-            aria-hidden="true"
-          >
-            <div v-for="start in plan.chunkStarts" :key="start" class="tick-cell">
-              <span v-if="start % 120 === 0" class="tick-label">{{ minutesToTick(start) }}</span>
+              <div
+                v-if="plan.isToday && nowLinePercent !== null"
+                class="now-line"
+                :style="{ left: `${nowLinePercent}%` }"
+                aria-hidden="true"
+              ></div>
+            </div>
+
+            <div
+              class="track tick-row"
+              :style="{ '--chunk-count': plan.chunkStarts.length }"
+              aria-hidden="true"
+            >
+              <div v-for="start in plan.chunkStarts" :key="start" class="tick-cell">
+                <span v-if="start % 120 === 0" class="tick-label">{{ minutesToTick(start) }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -971,6 +1008,14 @@ onUnmounted(() => {
   margin-bottom: 0.5rem;
 }
 
+.day-track {
+  position: relative;
+}
+
+.segment-track {
+  position: relative;
+}
+
 .track {
   display: grid;
   grid-template-columns: repeat(var(--chunk-count), 1fr);
@@ -988,12 +1033,24 @@ onUnmounted(() => {
 
 .tick-label {
   position: absolute;
-  left: 0;
+  left: -0.125rem;
   top: 0;
   font-size: 0.6875rem;
   font-family: var(--vp-font-family-mono);
   color: var(--vp-c-text-3);
   white-space: nowrap;
+}
+
+/* Marks the current time on today's track, poking a few px above/below the segment bar */
+.now-line {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background-color: #e5262d;
+  transform: translateX(-1px);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .segment {
