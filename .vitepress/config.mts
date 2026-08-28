@@ -5,6 +5,9 @@ export default defineConfig({
   title: 'Jake Searle',
   // description: "A VitePress Site",
   cleanUrls: true,
+  // Markdown files that are notes/scaffolding, not pages. Without this,
+  // VitePress builds every .md in the repo into a public URL.
+  srcExclude: ['**/README.md', '**/TODO.md', 'scripts/**'],
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
