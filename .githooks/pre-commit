@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Strips EXIF metadata (GPS, device model, timestamps, per-photo IDs) from
+# staged images before they're committed. This repo is public — nothing
+# committed here should carry geolocation or device fingerprinting data.
+#
+# The ICC colour profile is deliberately preserved, so image colour
+# rendering on the site is unaffected.
+#
+# Installed by `npm install` / `npm ci` via the "prepare" script, which
+# runs `git config core.hooksPath .githooks`.
+set -euo pipefail
+
+IMAGE_EXT_REGEX='\.(jpe?g|tiff?|heic|heif|png)$'
+
+staged=$(git diff --cached --name-only --diff-filter=ACM | grep -iE "$IMAGE_EXT_REGEX" || true)
+
+if [ -z "$staged" ]; then
+  exit 0
+fi
+
+if ! command -v exiftool >/dev/null 2>&1; then
+  echo "pre-commit: exiftool is required to strip metadata from staged images but isn't installed." >&2
+  echo "  macOS:  brew install exiftool" >&2
+  echo "  skip once (not recommended): git commit --no-verify" >&2
+  exit 1
+fi
+
+echo "pre-commit: stripping metadata from staged image(s)..."
+while IFS= read -r f; do
+  [ -f "$f" ] || continue
+  gps=$(exiftool -s3 -GPSLatitude -- "$f" 2>/dev/null || true)
+  exiftool -q -overwrite_original -all= --icc_profile:all -- "$f"
+  git add -- "$f"
+  if [ -n "$gps" ]; then
+    echo "  removed GPS + metadata: $f"
+  else
+    echo "  removed metadata: $f"
+  fi
+done <<<"$staged"
