@@ -498,3 +498,7 @@ scripts/**/cache/
 ### VitePress ###
 .vitepress/cache/
 .vitepress/dist/
+
+### History-scrub tooling (never commit — may reference secrets) ###
+.rewrite/
+needles.txt
