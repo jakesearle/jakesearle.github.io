@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 /**
- * Pre-commit scan for personal information.
+ * Scan for personal information.
+ *
+ *   personal-info-scan.mjs                  scan the index (staged changes)
+ *   personal-info-scan.mjs --range A B      scan everything introduced A..B
+ *
+ * The range form runs from pre-push; the index form from `npm run hooks:test`.
  *
  * Two layers:
  *   1. Deterministic checks (always run, no network, hard block) — GPS EXIF in
@@ -10,8 +15,8 @@
  *      people's contact details.
  *
  * Layer 2 degrades to a warning if Claude is unavailable or slow; layer 1
- * still blocks. That keeps commits working offline without silently
- * dropping the cheap, reliable checks.
+ * still blocks. That keeps things working offline without silently dropping
+ * the cheap, reliable checks.
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -101,18 +106,76 @@ function hasGpsExif(buf) {
   return false;
 }
 
-function stagedFiles() {
-  const out = git(['diff', '--cached', '--name-only', '--diff-filter=ACMR', '-z']).toString('utf8');
-  return out
-    .split('\0')
-    .filter(Boolean)
-    .filter((f) => !SKIP_PATH.some((re) => re.test(f)));
+/**
+ * A scan target. Either the index (pre-commit / `npm run hooks:test`) or a
+ * commit range (pre-push), so the same checks serve both hooks.
+ */
+function indexTarget() {
+  return {
+    label: 'staged changes',
+    entries() {
+      const out = git(['diff', '--cached', '--name-only', '--diff-filter=ACMR', '-z']).toString(
+        'utf8'
+      );
+      return out
+        .split('\0')
+        .filter(Boolean)
+        .filter((f) => !SKIP_PATH.some((re) => re.test(f)))
+        .map((path) => ({ path, ref: `:${path}` }));
+    },
+    diffFor: (paths) => ['diff', '--cached', '--', ...paths],
+  };
 }
 
-/** Staged blob content — not the working tree, which may differ. */
-function stagedBlob(path) {
+/**
+ * Every blob introduced between base and tip — not the net diff.
+ *
+ * A secret that is committed and then deleted in a later commit does not
+ * appear in `git diff base tip`, but its blob still ships to the remote and
+ * stays readable there. That is the exact shape of the leak this repo already
+ * had, so the range scan walks objects rather than the endpoint diff.
+ */
+function rangeTarget(base, tip) {
+  return {
+    label: `${base.slice(0, 8)}..${tip.slice(0, 8)}`,
+    entries() {
+      const listed = git(['rev-list', `${base}..${tip}`, '--objects'])
+        .toString('utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => {
+          const sp = line.indexOf(' ');
+          return sp < 0 ? null : { sha: line.slice(0, sp), path: line.slice(sp + 1) };
+        })
+        .filter((e) => e && e.path && !SKIP_PATH.some((re) => re.test(e.path)));
+      if (listed.length === 0) return [];
+
+      // One batch-check call to drop trees, keeping only blobs.
+      const check = spawnSync('git', ['cat-file', '--batch-check'], {
+        input: listed.map((e) => e.sha).join('\n') + '\n',
+        encoding: 'utf8',
+        maxBuffer: 64 * 1024 * 1024,
+      });
+      const types = (check.stdout || '').split('\n');
+      const out = [];
+      const seen = new Set();
+      listed.forEach((e, i) => {
+        if (!/ blob /.test(types[i] || '')) return;
+        if (seen.has(e.sha)) return; // same content under several paths
+        seen.add(e.sha);
+        out.push({ path: e.path, ref: e.sha });
+      });
+      return out;
+    },
+    // Every patch in the range, so intermediate states are visible too.
+    diffFor: (paths) => ['log', '-p', '--no-color', `${base}..${tip}`, '--', ...paths],
+  };
+}
+
+/** Blob content at the target's revision — not the working tree, which may differ. */
+function blobAt(entry) {
   try {
-    return git(['show', `:${path}`]);
+    return git(['show', entry.ref]);
   } catch {
     return null;
   }
@@ -124,11 +187,12 @@ function isProbablyBinary(buf) {
   return false;
 }
 
-function deterministicScan(files, allow) {
+function deterministicScan(entries, allow) {
   const findings = [];
-  const textFiles = [];
-  for (const f of files) {
-    const buf = stagedBlob(f);
+  const textFiles = new Set();
+  for (const entry of entries) {
+    const f = entry.path;
+    const buf = blobAt(entry);
     if (!buf) continue;
 
     if (IMAGE_EXT.test(f) && hasGpsExif(buf)) {
@@ -140,7 +204,7 @@ function deterministicScan(files, allow) {
       continue;
     }
     if (isProbablyBinary(buf)) continue;
-    textFiles.push(f);
+    textFiles.add(f);
 
     const text = buf.toString('utf8');
     for (const { label, re } of PATTERNS) {
@@ -153,17 +217,17 @@ function deterministicScan(files, allow) {
       }
     }
   }
-  return { findings, textFiles };
+  return { findings, textFiles: [...textFiles] };
 }
 
-function claudeScan(textFiles) {
+function claudeScan(target, textFiles) {
   if (textFiles.length === 0) return { skipped: 'no textual changes' };
 
   const probe = spawnSync('claude', ['--version'], { stdio: 'ignore' });
   if (probe.error || probe.status !== 0) return { skipped: 'claude CLI not found' };
 
   // Only text paths: piping a binary diff wastes the call and can fail outright.
-  let diff = git(['diff', '--cached', '--', ...textFiles]).toString('utf8');
+  let diff = git(target.diffFor(textFiles)).toString('utf8');
   if (!diff.trim()) return { skipped: 'no textual diff' };
   let truncated = false;
   if (diff.length > MAX_DIFF_BYTES) {
@@ -243,17 +307,30 @@ function main() {
     return 0;
   }
 
-  const files = stagedFiles();
-  if (files.length === 0) return 0;
+  // No args: scan the index. `--range <base> <tip>`: scan a commit range.
+  const argv = process.argv.slice(2);
+  let target;
+  if (argv[0] === '--range') {
+    if (!argv[1] || !argv[2]) {
+      console.error('usage: personal-info-scan.mjs [--range <base> <tip>]');
+      return 2;
+    }
+    target = rangeTarget(argv[1], argv[2]);
+  } else {
+    target = indexTarget();
+  }
+
+  const entries = target.entries();
+  if (entries.length === 0) return 0;
 
   const allow = loadAllowlist();
-  const { findings: hard, textFiles } = deterministicScan(files, allow);
-  const soft = claudeScan(textFiles);
+  const { findings: hard, textFiles } = deterministicScan(entries, allow);
+  const soft = claudeScan(target, textFiles);
 
   const blocked = hard.length > 0 || soft.block === true;
 
   if (hard.length) {
-    console.error(`\n${RED}✖ Personal information found in staged changes${OFF}\n`);
+    console.error(`\n${RED}✖ Personal information found in ${target.label}${OFF}\n`);
     for (const f of hard) {
       console.error(`  ${RED}${f.label}${OFF} — ${f.file}`);
       console.error(`    ${DIM}${f.detail}${OFF}`);
@@ -275,8 +352,14 @@ function main() {
 
   if (!blocked) return 0;
 
-  console.error(`\n${DIM}Commit blocked. Fix the above, or bypass deliberately with:${OFF}`);
-  console.error(`${DIM}  SKIP_PII_CHECK=1 git commit ...${OFF}`);
+  const verb = argv[0] === '--range' ? 'Push' : 'Commit';
+  console.error(`\n${DIM}${verb} blocked. Fix the above, or bypass deliberately with:${OFF}`);
+  console.error(`${DIM}  SKIP_PII_CHECK=1 git ${verb.toLowerCase()} ...${OFF}`);
+  if (verb === 'Push') {
+    console.error(
+      `${DIM}  Findings are in commits that already exist — amend or rebase to fix them.${OFF}`
+    );
+  }
   console.error(
     `${DIM}If a match is a false positive, add the exact string to .githooks/allowlist.txt${OFF}\n`
   );

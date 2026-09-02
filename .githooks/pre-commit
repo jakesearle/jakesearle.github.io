@@ -1,57 +1,43 @@
 #!/usr/bin/env bash
-# Pre-commit guard for a public repo that auto-deploys to a public site.
+# Strips EXIF metadata (GPS, device model, timestamps, per-photo IDs) from
+# staged images before they're committed. This repo is public — nothing
+# committed here should carry geolocation or device fingerprinting data.
 #
-# Two stages:
-#   1. Strip EXIF metadata (GPS, device model, timestamps, per-photo IDs) from
-#      staged images. The ICC colour profile is deliberately preserved, so
-#      image colour rendering on the site is unaffected.
-#   2. Scan staged content for personal information — see
-#      personal-info-scan.mjs. Blocks the commit if anything is found.
+# The ICC colour profile is deliberately preserved, so image colour
+# rendering on the site is unaffected.
+#
+# This runs at commit time rather than push time because stripping metadata
+# rewrites file content, which is only possible before the commit exists.
+# The personal-information scan runs at push time instead — see pre-push.
 #
 # Installed by `npm install` / `npm ci` via the "prepare" script, which
 # runs `git config core.hooksPath .githooks`.
 set -euo pipefail
 
-HOOK_DIR="$(dirname "$0")"
 IMAGE_EXT_REGEX='\.(jpe?g|tiff?|heic|heif|png)$'
-
-# --- 1. Strip image metadata -------------------------------------------------
 
 staged=$(git diff --cached --name-only --diff-filter=ACM | grep -iE "$IMAGE_EXT_REGEX" || true)
 
-if [ -n "$staged" ]; then
-  if ! command -v exiftool >/dev/null 2>&1; then
-    echo "pre-commit: exiftool is required to strip metadata from staged images but isn't installed." >&2
-    echo "  macOS:  brew install exiftool" >&2
-    echo "  skip once (not recommended): git commit --no-verify" >&2
-    exit 1
-  fi
-
-  echo "pre-commit: stripping metadata from staged image(s)..."
-  while IFS= read -r f; do
-    [ -f "$f" ] || continue
-    gps=$(exiftool -s3 -GPSLatitude -- "$f" 2>/dev/null || true)
-    exiftool -q -overwrite_original -all= --icc_profile:all -- "$f"
-    git add -- "$f"
-    if [ -n "$gps" ]; then
-      echo "  removed GPS + metadata: $f"
-    else
-      echo "  removed metadata: $f"
-    fi
-  done <<<"$staged"
+if [ -z "$staged" ]; then
+  exit 0
 fi
 
-# --- 2. Scan for personal information ----------------------------------------
-# Runs on every commit, images or not. Exits non-zero to block.
-
-# GUI git clients often run hooks with a minimal PATH that omits node. Fail
-# loudly rather than with a bare 127, and block rather than skip the scan.
-if ! command -v node >/dev/null 2>&1; then
-  echo "pre-commit: node is required for the personal-information scan but isn't on PATH." >&2
-  echo "  If you are committing from a GUI client, launch it so it inherits your shell PATH," >&2
-  echo "  or point this hook at an absolute node path." >&2
+if ! command -v exiftool >/dev/null 2>&1; then
+  echo "pre-commit: exiftool is required to strip metadata from staged images but isn't installed." >&2
+  echo "  macOS:  brew install exiftool" >&2
   echo "  skip once (not recommended): git commit --no-verify" >&2
   exit 1
 fi
 
-exec node "$HOOK_DIR/personal-info-scan.mjs"
+echo "pre-commit: stripping metadata from staged image(s)..."
+while IFS= read -r f; do
+  [ -f "$f" ] || continue
+  gps=$(exiftool -s3 -GPSLatitude -- "$f" 2>/dev/null || true)
+  exiftool -q -overwrite_original -all= --icc_profile:all -- "$f"
+  git add -- "$f"
+  if [ -n "$gps" ]; then
+    echo "  removed GPS + metadata: $f"
+  else
+    echo "  removed metadata: $f"
+  fi
+done <<<"$staged"

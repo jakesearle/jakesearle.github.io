@@ -18,20 +18,29 @@ Privacy guard.
 ## Privacy guard
 
 **This repo is public and every push to `main` publishes to the live site**, so a
-commit is publication. `.githooks/pre-commit` runs two stages over staged
-changes:
+push is publication. Two hooks split the work by what each can actually do:
 
-1. **Image metadata strip** — `exiftool` removes GPS, device model, timestamps
-   and per-photo IDs from staged images, preserving only the ICC colour
-   profile, then re-stages them. Blocks if `exiftool` isn't installed rather
-   than letting metadata through.
-2. **Personal-information scan** (`personal-info-scan.mjs`) — pattern checks for
-   GPS EXIF, phone numbers, street addresses and credential-shaped lines, then
-   a `claude -p` review of the staged text diff for what patterns miss: travel
-   plans, health details, home layout, other people's contact information.
+**`pre-commit` — image metadata.** `exiftool` strips GPS, device model,
+timestamps and per-photo IDs from staged images, preserving only the ICC colour
+profile, then re-stages them. This has to run at commit time: it rewrites file
+content, which is only possible before the commit exists. Blocks if `exiftool`
+isn't installed rather than letting metadata through.
 
-The Claude stage adds a few seconds per commit and degrades to a warning if the
-CLI is missing or errors; the pattern checks always run and always block.
+**`pre-push` — personal information.** `personal-info-scan.mjs` runs pattern
+checks (GPS EXIF, phone numbers, street addresses, credential-shaped lines) and
+then a `claude -p` review for what patterns miss: travel plans, health details,
+home layout, other people's contact information. Runs once per push rather than
+once per commit.
+
+It scans **every blob introduced by the push**, not the net diff. A secret that
+is committed and then deleted in a later commit does not show up in
+`git diff base tip`, but its blob still ships to the remote and stays readable
+there — which is exactly the shape of the leak this repo already had.
+
+The Claude stage adds a few seconds per push and degrades to a warning if the
+CLI is missing or errors; the pattern checks always run and always block. When
+a push is blocked, the findings are in commits that already exist, so fixing
+them means amending or rebasing.
 
 ```sh
 npm run hooks:test          # run the scan against whatever is staged
@@ -41,7 +50,7 @@ False positives go in `.githooks/allowlist.txt` — only for things you are happ
 to publish permanently. To bypass deliberately:
 
 ```sh
-SKIP_PII_CHECK=1 git commit ...    # or git commit --no-verify
+SKIP_PII_CHECK=1 git push ...      # or git push --no-verify
 ```
 
 ## Scripts
