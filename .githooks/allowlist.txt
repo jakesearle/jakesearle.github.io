@@ -1,0 +1,14 @@
+# Strings that are deliberately public and must not trip the pre-commit scan.
+# One exact substring per line. A match containing any of these is ignored.
+#
+# Only add things you are happy to have on a public website forever.
+# Do NOT add a string just to silence a warning you have not thought about.
+
+# Public contact address, published on the crochet pattern pages
+jake@searle.garden
+
+# BYU's public web-support address, quoted in archive/work/mendix/
+websitessupport@byu.edu
+
+# Public profile / repo
+github.com/jakesearle
