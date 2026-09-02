@@ -1,6 +1,8 @@
 <script setup>
 import { reactive, watch, ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { computeScaledWeights, pickWeighted, sortForDisplay } from '../../utils/rivals';
+import { EVENTS, annotateEvents } from '../../utils/rivals-events';
+import { EYE_LINE, SHOW_EYE_LINE, portraitOffset } from '../../utils/rivals-portraits';
 
 function getDefault() {
   return [
@@ -170,6 +172,42 @@ function selectUnderLevel(threshold) {
   characters.forEach((c) => (c.enabled = c.level < threshold));
 }
 
+// Event presets live in utils/rivals-events so the roster of past events can
+// grow without cluttering this component. The settings modal is `v-if`-ed off
+// during SSR, so reading the clock here can't cause a hydration mismatch.
+const eventPresets = computed(() =>
+  annotateEvents(
+    EVENTS,
+    characters.map((c) => c.name),
+    new Date()
+  )
+);
+
+const activeEvents = computed(() => eventPresets.value.filter((e) => e.active));
+const pastEvents = computed(() => eventPresets.value.filter((e) => !e.active));
+
+function selectByNames(names) {
+  characters.forEach((c) => (c.enabled = names.includes(c.name)));
+}
+
+// A preset reads as "on" when the enabled set is exactly what that preset would
+// produce, so the highlight is derived rather than stored — toggling a single
+// character by hand drops it, which is the honest answer. Presets that happen to
+// produce the same set (every level preset when all levels are 0) all light up.
+function selectionKey(matches) {
+  return characters
+    .filter(matches)
+    .map((c) => c.name)
+    .sort()
+    .join('|');
+}
+
+const currentSelectionKey = computed(() => selectionKey((c) => c.enabled));
+
+function isPresetActive(matches) {
+  return selectionKey(matches) === currentSelectionKey.value;
+}
+
 function resetData() {
   // Now one click away inside the modal, so guard the wipe
   if (!confirm("Reset every character's level and re-enable them all?")) return;
@@ -271,6 +309,15 @@ onUnmounted(() => {
 });
 
 const cardRefs = ref({});
+
+// Framing lives in utils/rivals-portraits so the per-character offsets are one
+// short table to tune rather than 17 entries buried in the roster.
+function portraitStyle(char) {
+  return {
+    backgroundImage: `url(/images/${char.name.replace(/ /g, '')}-2D.png)`,
+    backgroundPosition: `center calc(50% + ${portraitOffset(char.name)}px)`,
+  };
+}
 
 function scrollToCharacter(char) {
   const el = cardRefs.value[char.name];
@@ -390,31 +437,105 @@ async function handleTab(char, index, event) {
       </div>
       <div class="settings-body">
         <div class="setting-item">
-          <span class="setting-label">Presets</span>
-          <div class="setting-control setting-control--column">
-            <button class="action-btn preset-btn" @click="selectAll">
-              <span class="preset-title">Select all characters</span>
+          <span class="setting-label">Selection</span>
+          <div class="setting-control">
+            <button
+              class="action-btn"
+              :class="{ 'action-btn--active': isPresetActive(() => true) }"
+              :aria-pressed="isPresetActive(() => true)"
+              @click="selectAll"
+            >
+              Select all
             </button>
+            <button
+              class="action-btn"
+              :class="{ 'action-btn--active': isPresetActive(() => false) }"
+              :aria-pressed="isPresetActive(() => false)"
+              @click="deselectAll"
+            >
+              Deselect all
+            </button>
+          </div>
+          <p class="setting-description">
+            Turn every character on or off at once. These, and every preset below, replace your
+            current selection.
+          </p>
+        </div>
 
+        <div class="setting-item">
+          <span class="setting-label">Level milestones</span>
+          <div class="setting-control setting-control--column">
             <button
               v-for="preset in levelPresets"
               :key="preset.level"
               class="action-btn preset-btn"
+              :class="{ 'action-btn--active': isPresetActive((c) => c.level < preset.level) }"
+              :aria-pressed="isPresetActive((c) => c.level < preset.level)"
               :disabled="preset.remaining === 0"
               @click="selectUnderLevel(preset.level)"
             >
-              <span class="preset-title">Select all under level {{ preset.level }}</span>
+              <span class="preset-mark" aria-hidden="true">
+                {{ isPresetActive((c) => c.level < preset.level) ? '✓' : '' }}
+              </span>
+              <span class="preset-title">Under level {{ preset.level }}</span>
               <span class="preset-reward">{{ preset.reward }}</span>
               <span class="preset-count">{{ preset.remaining }} left</span>
             </button>
-
-            <button class="action-btn preset-btn" @click="deselectAll">
-              <span class="preset-title">Deselect all characters</span>
-            </button>
           </div>
           <p class="setting-description">
-            Each preset replaces your current selection. The level presets pick only the characters
-            still below that level, so the randomizer draws from the ones you haven't unlocked yet.
+            Picks only the characters still below that level, so the randomizer draws from the ones
+            you haven't unlocked yet.
+          </p>
+        </div>
+
+        <div class="setting-item">
+          <span class="setting-label">Events</span>
+          <div class="setting-control setting-control--column">
+            <button
+              v-for="event in activeEvents"
+              :key="event.id"
+              class="action-btn preset-btn"
+              :class="{
+                'action-btn--active': isPresetActive((c) => event.characters.includes(c.name)),
+              }"
+              :aria-pressed="isPresetActive((c) => event.characters.includes(c.name))"
+              :disabled="event.matching === 0"
+              @click="selectByNames(event.characters)"
+            >
+              <span class="preset-mark" aria-hidden="true">
+                {{ isPresetActive((c) => event.characters.includes(c.name)) ? '✓' : '' }}
+              </span>
+              <span class="preset-title">{{ event.name }}</span>
+              <span class="preset-reward">{{ event.reward }}</span>
+              <span class="preset-count">{{ event.matching }} chars</span>
+            </button>
+
+            <details v-if="pastEvents.length" class="past-events">
+              <summary>Past events ({{ pastEvents.length }})</summary>
+              <div class="setting-control setting-control--column">
+                <button
+                  v-for="event in pastEvents"
+                  :key="event.id"
+                  class="action-btn preset-btn"
+                  :class="{
+                    'action-btn--active': isPresetActive((c) => event.characters.includes(c.name)),
+                  }"
+                  :aria-pressed="isPresetActive((c) => event.characters.includes(c.name))"
+                  :disabled="event.matching === 0"
+                  @click="selectByNames(event.characters)"
+                >
+                  <span class="preset-mark" aria-hidden="true">
+                    {{ isPresetActive((c) => event.characters.includes(c.name)) ? '✓' : '' }}
+                  </span>
+                  <span class="preset-title">{{ event.name }}</span>
+                  <span class="preset-reward">{{ event.reward }}</span>
+                  <span class="preset-count">{{ event.matching }} chars</span>
+                </button>
+              </div>
+            </details>
+          </div>
+          <p class="setting-description">
+            Picks the characters that have a skin granting bonus event XP during that event.
           </p>
         </div>
 
@@ -443,7 +564,11 @@ async function handleTab(char, index, event) {
     </div>
   </div>
 
-  <div class="character-list">
+  <div
+    class="character-list"
+    :class="{ 'show-eye-line': SHOW_EYE_LINE }"
+    :style="{ '--eye-line': `${EYE_LINE * 100}%` }"
+  >
     <div
       v-for="(char, index) in displayedCharacters"
       :key="char.name"
@@ -455,12 +580,7 @@ async function handleTab(char, index, event) {
       class="parallelogram"
       :class="[`${char.type}`, { disabled: !char.enabled }]"
     >
-      <div
-        class="char-background"
-        :style="{
-          backgroundImage: `url(/images/${char.name.replace(/ /g, '')}-2D.png)`,
-        }"
-      ></div>
+      <div class="char-background" :style="portraitStyle(char)"></div>
       <div class="card-items">
         <div class="name">
           <span class="char-name">{{ char.name }}</span>
@@ -781,12 +901,29 @@ async function handleTab(char, index, event) {
   filter: grayscale(80%);
 }
 
+/* Tuning guide — see SHOW_EYE_LINE in utils/rivals-portraits. Sits above the
+   portrait but below nothing else that matters, and ignores the pointer so it
+   can't swallow a click on the card. */
+.character-list.show-eye-line .parallelogram::after {
+  content: '';
+  position: absolute;
+  top: var(--eye-line, 33.3333%);
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: red;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* background-position comes from portraitStyle() so each character's eye-line
+   can be nudged into place */
 .char-background {
   transform: skew(20deg);
   width: 100%;
   height: 100%;
   background-size: cover;
-  background-position: center;
+  background-repeat: no-repeat;
   display: flex;
   color: white;
   position: absolute;
@@ -1032,6 +1169,37 @@ async function handleTab(char, index, event) {
   font-size: 0.75rem;
   color: var(--vp-c-text-3);
   white-space: nowrap;
+}
+
+.action-btn--active {
+  border-color: var(--vp-c-brand-1);
+  background-color: var(--vp-c-brand-soft);
+  color: var(--vp-c-text-1);
+}
+
+/* Fixed width so rows don't shift when the check appears */
+.preset-mark {
+  flex-shrink: 0;
+  width: 1ch;
+  color: var(--vp-c-brand-1);
+  font-weight: 700;
+}
+
+.past-events summary {
+  font-size: 0.8125rem;
+  color: var(--vp-c-text-2);
+  cursor: pointer;
+  padding: 0.25rem 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.past-events summary:hover {
+  color: var(--vp-c-text-1);
+}
+
+.past-events[open] summary {
+  margin-bottom: 0.5rem;
 }
 
 .action-btn--danger:hover {
