@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watchEffect } from 'vue';
 
 const imageData = ref<ImageData | null>(null);
 const canvas = ref<HTMLCanvasElement | null>(null);
+const previewCanvas = ref<HTMLCanvasElement | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const showSettings = ref(false);
-const colorThreshold = ref(15);
 const gauge = ref(2.1);
 const errorMargin = ref(1.05);
 const headLength = ref(5);
@@ -165,36 +165,59 @@ const colorDistance = (color1: string, color2: string): number => {
   return Math.sqrt(dL * dL + da * da + db * db) * 333;
 };
 
-const gridData = computed(() => {
+// Pixels this transparent or more are treated as "no stitch" rather than a
+// real color — a fully transparent pixel's RGB channels are meaningless (often
+// (0,0,0), i.e. black) and shouldn't become part of the pattern.
+const TRANSPARENCY_ALPHA_THRESHOLD = 128;
+
+const rawGrid = computed(() => {
   if (!imageData.value) return [];
 
   const { width, height, data } = imageData.value;
-  const colorCounts = new Map<string, number>();
-  const rawGrid: string[][] = [];
+  const grid: (string | null)[][] = [];
 
   for (let y = 0; y < height; y++) {
-    const row: string[] = [];
+    const row: (string | null)[] = [];
     for (let x = 0; x < width; x++) {
       const index = (y * width + x) * 4;
-      const r = data[index];
-      const g = data[index + 1];
-      const b = data[index + 2];
-
-      const color = `rgba(${r},${g},${b},1)`;
-      row.push(color);
-      colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+      if (data[index + 3] < TRANSPARENCY_ALPHA_THRESHOLD) {
+        row.push(null);
+      } else {
+        row.push(`rgba(${data[index]},${data[index + 1]},${data[index + 2]},1)`);
+      }
     }
-    rawGrid.push(row);
+    grid.push(row);
   }
 
-  const sortedColors = Array.from(colorCounts.entries()).sort((a, b) => b[1] - a[1]);
+  return grid;
+});
 
+const sortedColorsByFrequency = computed((): [string, number][] => {
+  const colorCounts = new Map<string, number>();
+  for (const row of rawGrid.value) {
+    for (const color of row) {
+      if (color === null) continue;
+      colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+    }
+  }
+  return Array.from(colorCounts.entries()).sort((a, b) => b[1] - a[1]);
+});
+
+// Number of distinct colors in the source image, before any merging.
+const rawColorCount = computed(() => sortedColorsByFrequency.value.length);
+
+// Greedily merges each color (in frequency order) into the first prior color
+// within `threshold` of it, otherwise it becomes its own representative.
+const buildColorMapping = (
+  sortedColors: [string, number][],
+  threshold: number
+): Map<string, string> => {
   const colorMapping = new Map<string, string>();
 
   for (const [color] of sortedColors) {
     let mapped = false;
     for (const [mappedColor] of colorMapping) {
-      if (colorDistance(color, mappedColor) < colorThreshold.value) {
+      if (colorDistance(color, mappedColor) < threshold) {
         colorMapping.set(color, mappedColor);
         mapped = true;
         break;
@@ -205,13 +228,214 @@ const gridData = computed(() => {
     }
   }
 
-  const normalizedGrid = rawGrid.map((row) => row.map((color) => colorMapping.get(color) || color));
+  return colorMapping;
+};
 
-  return normalizedGrid;
+// colorDistance is monotonic non-increasing in threshold (a larger gap can
+// only merge more colors), so a larger threshold never yields more distinct
+// colors than a smaller one — binary search is well-defined here.
+const MAX_MERGE_THRESHOLD = 500;
+const BINARY_SEARCH_ITERATIONS = 24;
+
+const buildColorMappingForTargetCount = (
+  sortedColors: [string, number][],
+  targetCount: number
+): Map<string, string> => {
+  if (sortedColors.length === 0) return new Map();
+  if (targetCount >= sortedColors.length) return buildColorMapping(sortedColors, 0);
+
+  let low = 0;
+  let high = MAX_MERGE_THRESHOLD;
+  let bestMapping = buildColorMapping(sortedColors, high);
+
+  for (let i = 0; i < BINARY_SEARCH_ITERATIONS; i++) {
+    const mid = (low + high) / 2;
+    const mapping = buildColorMapping(sortedColors, mid);
+    const count = new Set(mapping.values()).size;
+    if (count <= targetCount) {
+      high = mid;
+      bestMapping = mapping;
+    } else {
+      low = mid;
+    }
+  }
+
+  return bestMapping;
+};
+
+// The distance threshold this planner used before "Number of Colors" replaced
+// it as the control — kept so a freshly loaded image starts at the same
+// merge behavior a user would have gotten before, just expressed as a count.
+const DEFAULT_COLOR_THRESHOLD = 15;
+
+const defaultColorCount = computed(() => {
+  if (sortedColorsByFrequency.value.length === 0) return 0;
+  const mapping = buildColorMapping(sortedColorsByFrequency.value, DEFAULT_COLOR_THRESHOLD);
+  return new Set(mapping.values()).size;
+});
+
+// null means "use this image's default count" — reset whenever a new image
+// is loaded so each pattern starts from its own natural default.
+const targetColorCount = ref<number | null>(null);
+
+const effectiveTargetColorCount = computed(
+  () => targetColorCount.value ?? defaultColorCount.value
+);
+
+const targetColorCountInput = computed({
+  get: () => effectiveTargetColorCount.value,
+  set: (value: number) => {
+    targetColorCount.value = value;
+  },
+});
+
+// Can't usefully ask for more distinct pattern colors than there are raw
+// colors to draw from, or more than there are physical yarns to assign them
+// to (past that, the yarn-matching step runs out of yarns to hand out).
+const maxColorCount = computed(() => {
+  if (rawColorCount.value === 0) return 1;
+  return Math.min(rawColorCount.value, impeccableYarns.length);
+});
+
+const incrementColorCount = () => {
+  targetColorCount.value = Math.min(effectiveTargetColorCount.value + 1, maxColorCount.value);
+};
+
+const decrementColorCount = () => {
+  targetColorCount.value = Math.max(effectiveTargetColorCount.value - 1, 1);
+};
+
+// Minimum total stitches (across the whole pattern) a post-merge color needs
+// to survive as its own color, so a stray outlier hue doesn't get its own
+// bobbin for just a stitch or two. Colors under this get folded into their
+// nearest surviving neighbor. The default and bounds all scale with the
+// pattern's size, since "5 stitches" means something very different on a
+// 20-stitch-wide pattern than on a 200-stitch-wide one.
+// Counts only real (non-transparent) pixels — an image with a transparent
+// background shouldn't have its thresholds inflated by empty padding.
+const totalStitchCount = computed(() =>
+  sortedColorsByFrequency.value.reduce((sum, [, count]) => sum + count, 0)
+);
+
+const minMinStitchCount = computed(() => 1);
+const maxMinStitchCount = computed(() =>
+  Math.max(minMinStitchCount.value, Math.floor(totalStitchCount.value * 0.1))
+);
+const defaultMinStitchCount = computed(() => {
+  const value = Math.max(1, Math.floor(totalStitchCount.value * 0.01));
+  return Math.min(Math.max(value, minMinStitchCount.value), maxMinStitchCount.value);
+});
+
+const minStitchFilterEnabled = ref(true);
+
+// null means "use this image's default" — reset whenever a new image is
+// loaded so each pattern starts from its own natural default.
+const minStitchCountOverride = ref<number | null>(null);
+
+const effectiveMinStitchCount = computed(() => {
+  const value = minStitchCountOverride.value ?? defaultMinStitchCount.value;
+  return Math.min(Math.max(value, minMinStitchCount.value), maxMinStitchCount.value);
+});
+
+const minStitchCountInput = computed({
+  get: () => effectiveMinStitchCount.value,
+  set: (value: number) => {
+    minStitchCountOverride.value = value;
+  },
+});
+
+const incrementMinStitchCount = () => {
+  minStitchCountOverride.value = Math.min(effectiveMinStitchCount.value + 1, maxMinStitchCount.value);
+};
+
+const decrementMinStitchCount = () => {
+  minStitchCountOverride.value = Math.max(effectiveMinStitchCount.value - 1, minMinStitchCount.value);
+};
+
+const filterSmallColorGroups = (
+  mapping: Map<string, string>,
+  sortedColors: [string, number][],
+  minStitches: number
+): Map<string, string> => {
+  if (minStitches <= 1) return mapping;
+
+  const repStitchCounts = new Map<string, number>();
+  for (const [color, count] of sortedColors) {
+    const rep = mapping.get(color) ?? color;
+    repStitchCounts.set(rep, (repStitchCounts.get(rep) || 0) + count);
+  }
+
+  const qualifyingReps = new Set(
+    Array.from(repStitchCounts.entries())
+      .filter(([, count]) => count >= minStitches)
+      .map(([rep]) => rep)
+  );
+
+  // If every color would get filtered out, the threshold is too aggressive
+  // for this pattern — leave the mapping alone rather than erasing everything.
+  if (qualifyingReps.size === 0) return mapping;
+
+  const reassignedRep = new Map<string, string>();
+  for (const rep of repStitchCounts.keys()) {
+    if (qualifyingReps.has(rep)) {
+      reassignedRep.set(rep, rep);
+      continue;
+    }
+    let nearestRep = rep;
+    let nearestDistance = Infinity;
+    for (const candidate of qualifyingReps) {
+      const distance = colorDistance(rep, candidate);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestRep = candidate;
+      }
+    }
+    reassignedRep.set(rep, nearestRep);
+  }
+
+  const filteredMapping = new Map<string, string>();
+  for (const [color, rep] of mapping) {
+    filteredMapping.set(color, reassignedRep.get(rep) ?? rep);
+  }
+  return filteredMapping;
+};
+
+const colorCountMapping = computed(() => {
+  if (rawGrid.value.length === 0) return new Map<string, string>();
+  return buildColorMappingForTargetCount(
+    sortedColorsByFrequency.value,
+    effectiveTargetColorCount.value
+  );
+});
+
+const filteredColorMapping = computed(() => {
+  if (!minStitchFilterEnabled.value) return colorCountMapping.value;
+  return filterSmallColorGroups(
+    colorCountMapping.value,
+    sortedColorsByFrequency.value,
+    effectiveMinStitchCount.value
+  );
+});
+
+// How many colors the "Minimum Stitches" filter folded away, on top of
+// whatever "Number of Colors" already merged — shown as a live stat.
+const removedSmallColorCount = computed(() => {
+  const beforeCount = new Set(colorCountMapping.value.values()).size;
+  const afterCount = new Set(filteredColorMapping.value.values()).size;
+  return Math.max(0, beforeCount - afterCount);
+});
+
+const gridData = computed(() => {
+  if (rawGrid.value.length === 0) return [];
+
+  const mapping = filteredColorMapping.value;
+  return rawGrid.value.map((row) =>
+    row.map((color) => (color === null ? null : mapping.get(color) || color))
+  );
 });
 
 interface ColorGroup {
-  color: string;
+  color: string | null;
   startIndex: number;
   endIndex: number;
   groupNumber: number;
@@ -303,15 +527,27 @@ const mergedColorGroups = computed(() => {
   return groups;
 });
 
+// Flat colIndex -> group lookup per row, so getCellGroupInfo is O(1) instead of
+// scanning a row's groups on every call (it's called up to 5x per cell).
+const cellGroupLookup = computed(() => {
+  return mergedColorGroups.value.map((rowGroups) => {
+    const lookup: ColorGroup[] = [];
+    for (const group of rowGroups) {
+      for (let col = group.startIndex; col <= group.endIndex; col++) {
+        lookup[col] = group;
+      }
+    }
+    return lookup;
+  });
+});
+
 const getCellGroupInfo = (rowIndex: number, colIndex: number) => {
-  const rowGroups = mergedColorGroups.value[rowIndex];
-  const group = rowGroups.find((g) => colIndex >= g.startIndex && colIndex <= g.endIndex);
-  return group;
+  return cellGroupLookup.value[rowIndex]?.[colIndex];
 };
 
 const shouldShowGroupLabel = (rowIndex: number, colIndex: number) => {
   const group = getCellGroupInfo(rowIndex, colIndex);
-  if (!group) return false;
+  if (!group || group.color === null) return false;
 
   const rowNumber = gridData.value.length - rowIndex;
   const isOddRow = rowNumber % 2 === 1;
@@ -340,7 +576,9 @@ const shouldShowGroupLabel = (rowIndex: number, colIndex: number) => {
 
 const getCellBorders = (rowIndex: number, colIndex: number) => {
   const group = getCellGroupInfo(rowIndex, colIndex);
-  if (!group) return { top: false, right: false, bottom: false, left: false };
+  if (!group || group.color === null) {
+    return { top: false, right: false, bottom: false, left: false };
+  }
 
   const borders = {
     top: false,
@@ -420,11 +658,22 @@ const darkenColor = (color: string, amount: number = 0.3): string => {
   }
 };
 
+// Tints the group-label pill with the cell's own yarn color (darkened
+// heavily, so white text stays readable) instead of a neutral black, so the
+// number visually ties back to its own bobbin's color.
+const getLabelBackground = (color: string | null): string => {
+  if (color === null) return 'transparent';
+  const darkened = darkenColor(color, 0.65);
+  const match = darkened.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (!match) return darkened;
+  return `rgba(${match[1]},${match[2]},${match[3]},0.7)`;
+};
+
 const colorPalette = computed(() => {
   const colors = new Set<string>();
   for (const row of gridData.value) {
     for (const color of row) {
-      colors.add(color);
+      if (color !== null) colors.add(color);
     }
   }
   return Array.from(colors);
@@ -434,7 +683,9 @@ const maxBobbinsInRow = computed(() => {
   let maxCount = 0;
 
   for (const row of mergedColorGroups.value) {
-    const uniqueGroups = new Set(row.map((g) => g.mergedGroupId));
+    const uniqueGroups = new Set(
+      row.filter((g) => g.color !== null).map((g) => g.mergedGroupId)
+    );
     maxCount = Math.max(maxCount, uniqueGroups.size);
   }
 
@@ -447,6 +698,8 @@ const bobbinInfo = computed(() => {
 
   for (const row of mergedColorGroups.value) {
     for (const group of row) {
+      if (group.color === null) continue;
+
       const stitchCount = group.endIndex - group.startIndex + 1;
       const existing = groupStitches.get(group.mergedGroupId);
       if (existing) {
@@ -570,71 +823,76 @@ const oklabColorDistance = (hex1: string, hex2: string): number => {
   return Math.sqrt(dL * dL + da * da + db * db);
 };
 
-// Hungarian Algorithm for optimal assignment
+// Hungarian Algorithm (Kuhn-Munkres, O(size^3)) for optimal assignment.
+// Pattern colors are rows, yarns are columns; padded to square with zero-cost
+// dummy entries so every row still gets a real assignment when possible.
 const hungarianAlgorithm = (costMatrix: number[][]): number[] => {
   const n = costMatrix.length;
+  if (n === 0) return [];
+
   const m = costMatrix[0].length;
-
-  // Pad matrix to be square if needed
   const size = Math.max(n, m);
-  const matrix = Array(size)
-    .fill(0)
-    .map(() => Array(size).fill(0));
-  for (let i = 0; i < n; i++) {
-    for (let j = 0; j < m; j++) {
-      matrix[i][j] = costMatrix[i][j];
-    }
-  }
 
-  // Step 1: Row reduction
-  for (let i = 0; i < size; i++) {
-    const minVal = Math.min(...matrix[i]);
-    for (let j = 0; j < size; j++) {
-      matrix[i][j] -= minVal;
-    }
-  }
+  const cost = Array.from({ length: size }, (_, i) =>
+    Array.from({ length: size }, (_, j) => (i < n && j < m ? costMatrix[i][j] : 0))
+  );
 
-  // Step 2: Column reduction
-  for (let j = 0; j < size; j++) {
-    let minVal = Infinity;
-    for (let i = 0; i < size; i++) {
-      minVal = Math.min(minVal, matrix[i][j]);
-    }
-    for (let i = 0; i < size; i++) {
-      matrix[i][j] -= minVal;
-    }
-  }
+  // 1-indexed internally, as is standard for this algorithm.
+  const u = new Array(size + 1).fill(0);
+  const v = new Array(size + 1).fill(0);
+  const p = new Array(size + 1).fill(0); // p[j] = row currently assigned to column j
+  const way = new Array(size + 1).fill(0);
 
-  // Find optimal assignment using simple greedy on reduced matrix
-  const rowAssignment = Array(size).fill(-1);
-  const colUsed = Array(size).fill(false);
+  for (let i = 1; i <= size; i++) {
+    p[0] = i;
+    let j0 = 0;
+    const minv = new Array(size + 1).fill(Infinity);
+    const used = new Array(size + 1).fill(false);
 
-  // Assign zeros greedily
-  for (let i = 0; i < n; i++) {
-    for (let j = 0; j < m; j++) {
-      if (matrix[i][j] === 0 && !colUsed[j]) {
-        rowAssignment[i] = j;
-        colUsed[j] = true;
-        break;
-      }
-    }
-  }
+    do {
+      used[j0] = true;
+      const i0 = p[j0];
+      let delta = Infinity;
+      let j1 = -1;
 
-  // For any unassigned rows, find minimum cost
-  for (let i = 0; i < n; i++) {
-    if (rowAssignment[i] === -1) {
-      let minJ = -1;
-      let minCost = Infinity;
-      for (let j = 0; j < m; j++) {
-        if (!colUsed[j] && matrix[i][j] < minCost) {
-          minCost = matrix[i][j];
-          minJ = j;
+      for (let j = 1; j <= size; j++) {
+        if (!used[j]) {
+          const cur = cost[i0 - 1][j - 1] - u[i0] - v[j];
+          if (cur < minv[j]) {
+            minv[j] = cur;
+            way[j] = j0;
+          }
+          if (minv[j] < delta) {
+            delta = minv[j];
+            j1 = j;
+          }
         }
       }
-      if (minJ !== -1) {
-        rowAssignment[i] = minJ;
-        colUsed[minJ] = true;
+
+      for (let j = 0; j <= size; j++) {
+        if (used[j]) {
+          u[p[j]] += delta;
+          v[j] -= delta;
+        } else {
+          minv[j] -= delta;
+        }
       }
+
+      j0 = j1;
+    } while (p[j0] !== 0);
+
+    do {
+      const j1 = way[j0];
+      p[j0] = p[j1];
+      j0 = j1;
+    } while (j0 !== 0);
+  }
+
+  const rowAssignment = Array(n).fill(-1);
+  for (let j = 1; j <= size; j++) {
+    const i = p[j] - 1;
+    if (i >= 0 && i < n && j - 1 < m) {
+      rowAssignment[i] = j - 1;
     }
   }
 
@@ -681,10 +939,39 @@ const gridDataWithYarnColors = computed(() => {
   const mapping = yarnMapping.value;
   return gridData.value.map((row) =>
     row.map((patternColor) => {
+      if (patternColor === null) return null;
       const yarn = mapping.get(patternColor);
       return yarn ? yarn.hex : patternColor;
     })
   );
+});
+
+// Draws the pattern at its native pixel resolution (one canvas pixel per
+// stitch) so the settings preview stays crisp when scaled up by CSS, letting
+// the color-count change be judged without closing the settings pane. Empty
+// (transparent) cells are simply left unpainted.
+watchEffect(() => {
+  const canvasEl = previewCanvas.value;
+  const grid = gridDataWithYarnColors.value;
+  if (!canvasEl || grid.length === 0) return;
+
+  const height = grid.length;
+  const width = grid[0].length;
+  canvasEl.width = width;
+  canvasEl.height = height;
+
+  const ctx = canvasEl.getContext('2d');
+  if (!ctx) return;
+
+  ctx.clearRect(0, 0, width, height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const color = grid[y][x];
+      if (color === null) continue;
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
 });
 
 const colorPaletteWithNames = computed(() => {
@@ -693,6 +980,7 @@ const colorPaletteWithNames = computed(() => {
 
   for (const row of gridData.value) {
     for (const color of row) {
+      if (color === null) continue;
       colorStitchCount.set(color, (colorStitchCount.get(color) || 0) + 1);
     }
   }
@@ -740,6 +1028,8 @@ const handleFileUpload = (event: Event) => {
       ctx.drawImage(img, 0, 0);
       imageData.value = ctx.getImageData(0, 0, img.width, img.height);
       currentRow.value = null;
+      targetColorCount.value = null;
+      minStitchCountOverride.value = null;
     };
     img.src = e.target?.result as string;
   };
@@ -765,59 +1055,6 @@ const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
         b: parseInt(result[3], 16),
       }
     : { r: 0, g: 0, b: 0 };
-};
-
-const rgbToHsv = (r: number, g: number, b: number): { h: number; s: number; v: number } => {
-  r /= 255;
-  g /= 255;
-  b /= 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const delta = max - min;
-
-  let h = 0;
-  if (delta !== 0) {
-    if (max === r) h = ((g - b) / delta) % 6;
-    else if (max === g) h = (b - r) / delta + 2;
-    else h = (r - g) / delta + 4;
-    h *= 60;
-    if (h < 0) h += 360;
-  }
-
-  const s = max === 0 ? 0 : delta / max;
-  const v = max;
-
-  return { h, s, v };
-};
-
-const hsvColorDistance = (hex1: string, hex2: string): number => {
-  const rgb1 = hexToRgb(hex1);
-  const rgb2 = hexToRgb(hex2);
-  const hsv1 = rgbToHsv(rgb1.r, rgb1.g, rgb1.b);
-  const hsv2 = rgbToHsv(rgb2.r, rgb2.g, rgb2.b);
-
-  // Handle hue circularity (0° = 360°)
-  let dh = Math.abs(hsv1.h - hsv2.h);
-  if (dh > 180) dh = 360 - dh;
-
-  // Normalize and weight: hue is most important, then saturation, then value
-  const hueDist = dh / 180; // normalize to 0-1
-  const satDist = Math.abs(hsv1.s - hsv2.s);
-  const valDist = Math.abs(hsv1.v - hsv2.v);
-
-  // Weight hue heavily to keep colors in same family
-  return Math.sqrt(hueDist * hueDist * 5 + satDist * satDist + valDist * valDist);
-};
-
-const getNearestYarn = (rgba: string) => {
-  const patternHex = rgbaToHex(rgba);
-  if (!patternHex) return { name: 'Unknown', hex: '#000000' };
-
-  return impeccableYarns.reduce((nearest, yarn) => {
-    const dist = hsvColorDistance(patternHex, yarn.hex);
-    const nearestDist = hsvColorDistance(patternHex, nearest.hex);
-    return dist < nearestDist ? yarn : nearest;
-  });
 };
 
 const yarnToRgba = (yarn: { hex: string }) => {
@@ -875,31 +1112,103 @@ const yarnToRgba = (yarn: { hex: string }) => {
         </div>
         <div class="settings-body">
           <div class="setting-item">
-            <label for="color-threshold">Similar Color Margin</label>
+            <label for="color-count">Number of Colors</label>
             <div class="setting-control">
               <input
-                id="color-threshold"
-                v-model.number="colorThreshold"
+                id="color-count"
+                v-model.number="targetColorCountInput"
                 type="range"
-                min="0"
-                max="100"
+                min="1"
+                :max="maxColorCount"
               />
+              <button
+                type="button"
+                class="step-btn"
+                :disabled="effectiveTargetColorCount <= 1"
+                aria-label="Decrease number of colors"
+                @click="decrementColorCount"
+              >
+                −
+              </button>
               <input
-                v-model.number="colorThreshold"
+                v-model.number="targetColorCountInput"
                 type="number"
-                min="0"
-                max="100"
+                min="1"
+                :max="maxColorCount"
                 class="threshold-input"
               />
+              <button
+                type="button"
+                class="step-btn"
+                :disabled="effectiveTargetColorCount >= maxColorCount"
+                aria-label="Increase number of colors"
+                @click="incrementColorCount"
+              >
+                +
+              </button>
             </div>
             <p class="setting-description">
-              Colors within this distance will be merged into one (0 = exact match, 100 = very loose
-              matching)
+              Target number of colors in the pattern. Similar colors in the source image are merged
+              together to reach this count — the Minimum Stitches filter below can then remove a few
+              more, so the final count may end up slightly lower.
+            </p>
+          </div>
+          <div class="setting-item">
+            <div class="setting-item-header">
+              <label for="min-stitches">Minimum Stitches</label>
+              <label class="min-stitches-toggle">
+                <input type="checkbox" v-model="minStitchFilterEnabled" />
+                Enabled
+              </label>
+            </div>
+            <div class="setting-control">
+              <input
+                id="min-stitches"
+                v-model.number="minStitchCountInput"
+                type="range"
+                :min="minMinStitchCount"
+                :max="maxMinStitchCount"
+                :disabled="!minStitchFilterEnabled"
+              />
+              <button
+                type="button"
+                class="step-btn"
+                :disabled="!minStitchFilterEnabled || effectiveMinStitchCount <= minMinStitchCount"
+                aria-label="Decrease minimum stitches"
+                @click="decrementMinStitchCount"
+              >
+                −
+              </button>
+              <input
+                v-model.number="minStitchCountInput"
+                type="number"
+                :min="minMinStitchCount"
+                :max="maxMinStitchCount"
+                class="threshold-input"
+                :disabled="!minStitchFilterEnabled"
+              />
+              <button
+                type="button"
+                class="step-btn"
+                :disabled="!minStitchFilterEnabled || effectiveMinStitchCount >= maxMinStitchCount"
+                aria-label="Increase minimum stitches"
+                @click="incrementMinStitchCount"
+              >
+                +
+              </button>
+            </div>
+            <p class="setting-description">
+              Colors used fewer than this many stitches total are folded into their nearest
+              neighboring color, instead of being left as a stray single-stitch color.
             </p>
             <p class="setting-stat">
-              Number of colors:
-              <strong>{{ colorPalette.length }}</strong>
+              <template v-if="minStitchFilterEnabled">
+                {{ removedSmallColorCount }} too small color{{ removedSmallColorCount === 1 ? '' : 's' }}
+                removed
+              </template>
+              <template v-else>Filter disabled — no colors removed</template>
             </p>
+            <canvas v-if="gridData.length > 0" ref="previewCanvas" class="color-preview-canvas"></canvas>
           </div>
           <div class="setting-item">
             <label for="gauge">Gauge (in./st.)</label>
@@ -1048,27 +1357,32 @@ const yarnToRgba = (yarn: { hex: string }) => {
             :class="{
               'grid-left': colIndex % 10 === 0 && colIndex !== 0,
               'grid-top': rowIndex % 10 === 0 && rowIndex !== 0,
+              'pattern-cell-empty': color === null,
             }"
-            :style="{
-              backgroundColor: color,
-              boxShadow:
-                [
-                  getCellBorders(rowIndex, colIndex).top
-                    ? `inset 0 2px 0 0 ${darkenColor(color)}`
-                    : null,
-                  getCellBorders(rowIndex, colIndex).right
-                    ? `inset -2px 0 0 0 ${darkenColor(color)}`
-                    : null,
-                  getCellBorders(rowIndex, colIndex).bottom
-                    ? `inset 0 -2px 0 0 ${darkenColor(color)}`
-                    : null,
-                  getCellBorders(rowIndex, colIndex).left
-                    ? `inset 2px 0 0 0 ${darkenColor(color)}`
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join(', ') || 'none',
-            }"
+            :style="
+              color === null
+                ? {}
+                : {
+                    backgroundColor: color,
+                    boxShadow:
+                      [
+                        getCellBorders(rowIndex, colIndex).top
+                          ? `inset 0 2px 0 0 ${darkenColor(color)}`
+                          : null,
+                        getCellBorders(rowIndex, colIndex).right
+                          ? `inset -2px 0 0 0 ${darkenColor(color)}`
+                          : null,
+                        getCellBorders(rowIndex, colIndex).bottom
+                          ? `inset 0 -2px 0 0 ${darkenColor(color)}`
+                          : null,
+                        getCellBorders(rowIndex, colIndex).left
+                          ? `inset 2px 0 0 0 ${darkenColor(color)}`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(', ') || 'none',
+                  }
+            "
           >
             <span
               v-if="shouldShowGroupLabel(rowIndex, colIndex)"
@@ -1077,6 +1391,7 @@ const yarnToRgba = (yarn: { hex: string }) => {
                 'group-label-right': (gridDataWithYarnColors.length - rowIndex) % 2 === 1,
                 'group-label-left': (gridDataWithYarnColors.length - rowIndex) % 2 === 0,
               }"
+              :style="{ backgroundColor: getLabelBackground(color) }"
               @click.stop="scrollToBobbin(getCellGroupInfo(rowIndex, colIndex)?.mergedGroupId || 0)"
             >
               {{ getCellGroupInfo(rowIndex, colIndex)?.mergedGroupId }}
@@ -1361,6 +1676,33 @@ const yarnToRgba = (yarn: { hex: string }) => {
   margin-bottom: 0.5rem;
 }
 
+.setting-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.setting-item-header label {
+  margin-bottom: 0;
+}
+
+.setting-item .min-stitches-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--vp-c-text-2);
+  cursor: pointer;
+}
+
+.min-stitches-toggle input[type='checkbox'] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
 .setting-control {
   display: flex;
   gap: 0.75rem;
@@ -1389,6 +1731,48 @@ const yarnToRgba = (yarn: { hex: string }) => {
   outline: none;
   border-color: var(--vp-c-brand-1);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--vp-c-brand-1) 25%, transparent);
+}
+
+.step-btn {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  border: 1px solid var(--vp-c-border);
+  border-radius: 0.375rem;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.step-btn:hover:not(:disabled) {
+  background-color: var(--vp-c-bg-mute);
+  border-color: var(--vp-c-brand-1);
+}
+
+.step-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.color-preview-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 0.75rem;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 0.5rem;
+  background-color: var(--vp-c-bg-soft);
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
 }
 
 .setting-description {
@@ -1527,25 +1911,35 @@ const yarnToRgba = (yarn: { hex: string }) => {
   border-top: 2px solid rgba(0, 0, 0, 1);
 }
 
+.pattern-cell-empty {
+  background-color: transparent;
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--vp-c-bg-soft) 0,
+    var(--vp-c-bg-soft) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
 .group-label {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.125rem;
+  height: 0.875rem;
+  padding: 0 0.1875rem;
   font-size: 0.625rem;
   font-weight: 700;
   font-family: var(--vp-font-family-mono);
   color: white;
   line-height: 1;
+  white-space: nowrap;
+  border-radius: 0.1875rem;
   z-index: 2;
-  text-shadow:
-    -0.0625rem -0.0625rem 0 #000,
-    0.0625rem -0.0625rem 0 #000,
-    -0.0625rem 0.0625rem 0 #000,
-    0.0625rem 0.0625rem 0 #000,
-    -0.0625rem 0 0 #000,
-    0.0625rem 0 0 #000,
-    0 -0.0625rem 0 #000,
-    0 0.0625rem 0 #000;
 }
 
 .group-label-left {
@@ -1562,7 +1956,8 @@ const yarnToRgba = (yarn: { hex: string }) => {
 }
 
 .group-label-link:hover {
-  transform: scale(1.2);
+  transform: translateY(-50%) scale(1.2);
+  z-index: 3;
 }
 
 .row-counter {
