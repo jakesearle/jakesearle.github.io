@@ -6,6 +6,7 @@ import {
   type Cell,
   type Grid,
   cluesFromGrid,
+  countLineArrangements,
   lineHints,
   makeGrid,
   parseClueLine,
@@ -84,6 +85,28 @@ describe('solveLine', () => {
     expect(solveLine([3], line('..'))).toBeNull();
     expect(solveLine([2], line('#x#'))).toBeNull();
     expect(solveLine([], line('.#.'))).toBeNull();
+  });
+});
+
+describe('countLineArrangements', () => {
+  it('counts the ways a run can slide along a line', () => {
+    expect(countLineArrangements([2], line('....'))).toBe(3);
+  });
+
+  it('returns 1 for a line that is fully pinned down', () => {
+    expect(countLineArrangements([2, 2], line('.....'))).toBe(1);
+    expect(countLineArrangements([], line('.....'))).toBe(1);
+  });
+
+  it('returns 0 when the clue cannot fit', () => {
+    expect(countLineArrangements([3], line('..'))).toBe(0);
+    expect(countLineArrangements([2], line('#x#'))).toBe(0);
+  });
+
+  it('narrows as cells become known', () => {
+    expect(countLineArrangements([1, 1], line('....'))).toBe(3);
+    expect(countLineArrangements([1, 1], line('#...'))).toBe(2);
+    expect(countLineArrangements([1, 1], line('#x#x'))).toBe(1);
   });
 });
 

@@ -162,6 +162,43 @@ export function solveLine(clue: number[], line: Cell[]): Cell[] | null {
   return out;
 }
 
+/**
+ * How many ways the clue can still be arranged in this line. 0 means the line
+ * contradicts its clue; 1 means the line is fully determined even if some
+ * cells are not marked yet.
+ */
+export function countLineArrangements(clue: number[], line: Cell[]): number {
+  const n = line.length;
+  const k = clue.length;
+  const memo: (number | undefined)[][] = Array.from({ length: n + 2 }, () =>
+    Array.from({ length: k + 1 }, () => undefined)
+  );
+
+  const fits = (pos: number, len: number): boolean => {
+    if (pos + len > n) return false;
+    for (let i = pos; i < pos + len; i++) {
+      if (line[i] === EMPTY) return false;
+    }
+    if (pos + len < n && line[pos + len] === FILLED) return false;
+    return true;
+  };
+
+  const count = (pos: number, clueIdx: number): number => {
+    if (pos >= n) return clueIdx === k ? 1 : 0;
+    const cached = memo[pos][clueIdx];
+    if (cached !== undefined) return cached;
+    let total = 0;
+    if (line[pos] !== FILLED) total += count(pos + 1, clueIdx);
+    if (clueIdx < k && fits(pos, clue[clueIdx])) {
+      total += count(pos + clue[clueIdx] + 1, clueIdx + 1);
+    }
+    memo[pos][clueIdx] = total;
+    return total;
+  };
+
+  return count(0, 0);
+}
+
 export interface SolveResult {
   grid: Grid;
   /** 'solved' = no unknowns left, 'partial' = logic ran out, 'contradiction' = unsolvable. */
