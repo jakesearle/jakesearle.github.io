@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watchEffect } from 'vue';
+import { impeccableYarns } from '../../utils/impeccable-yarns';
 
 const imageData = ref<ImageData | null>(null);
 const canvas = ref<HTMLCanvasElement | null>(null);
@@ -15,85 +16,6 @@ const heightInches = ref(4);
 
 const woundBobbins = ref(new Set<number>());
 const currentRow = ref<number | null>(null);
-
-const impeccableYarns = [
-  { name: 'Amethyst', hex: '#783971' },
-  { name: 'Aqua', hex: '#18c0cc' },
-  { name: 'Aran', hex: '#eae1d3' },
-  { name: 'Arbor Rose', hex: '#eb1651' },
-  { name: 'Aruba Blue', hex: '#7be0db' },
-  { name: 'Barley', hex: '#8b7d78' },
-  { name: 'Black', hex: '#2b2427' },
-  { name: 'Blue Haze', hex: '#d5e7e9' },
-  { name: 'Blue Moon', hex: '#526d87' },
-  { name: 'Brite Sky Blue', hex: '#0074a3' },
-  { name: 'Burgundy', hex: '#860633' },
-  { name: 'Butterscotch', hex: '#fdd082' },
-  { name: 'Cherry', hex: '#c90126' },
-  { name: 'Chocolate Brown', hex: '#633e32' },
-  { name: 'Citron', hex: '#e3e69e' },
-  { name: 'Claret', hex: '#b9031c' },
-  { name: 'Classic Gray', hex: '#dbd9da' },
-  { name: 'Clear Blue', hex: '#0092d3' },
-  { name: 'Coral', hex: '#ffb7bb' },
-  { name: 'Dark Charcoal', hex: '#443e40' },
-  { name: 'Deep Forest', hex: '#74684b' },
-  { name: 'Eggplant', hex: '#a192d8' },
-  { name: 'Fern', hex: '#c9c373' },
-  { name: 'Forest', hex: '#626C42' },
-  { name: 'Gold', hex: '#C17F0F' },
-  { name: 'Golden Beige', hex: '#f0eee8' },
-  { name: 'Grape Punch', hex: '#320057' },
-  { name: 'Grass', hex: '#CFC670' },
-  { name: 'Green Lagoon', hex: '#b8d0c4' },
-  { name: 'Heather', hex: '#f3d4af' },
-  { name: 'Jade', hex: '#a3deba' },
-  { name: 'Kelly Green', hex: '#06906a' },
-  { name: 'Lavender', hex: '#b297ca' },
-  { name: 'Lippy', hex: '#e60078' },
-  { name: 'Misty Blue', hex: '#9db8c3' },
-  { name: 'Navy Blue', hex: '#2D304C' },
-  { name: 'Orange Crush', hex: '#fa340a' },
-  { name: 'Pale Gray', hex: '#9d9e9e' },
-  { name: 'Petunia', hex: '#cbd3e2' },
-  { name: 'Plum', hex: '#bd9cb2' },
-  { name: 'Pumpkin', hex: '#e84805' },
-  { name: 'Putty', hex: '#dad8d1' },
-  { name: 'Red Hot', hex: '#bf000a' },
-  { name: 'Rich Orchid', hex: '#d70361' },
-  { name: 'Royal', hex: '#011e70' },
-  { name: 'Sapphire', hex: '#103858' },
-  { name: 'Sea Green', hex: '#abdfe5' },
-  { name: 'Skylight', hex: '#c5e3df' },
-  { name: 'Smoke', hex: '#cfd9db' },
-  { name: 'Soft Rose', hex: '#f1b8b9' },
-  { name: 'Soft Taupe', hex: '#daa77d' },
-  { name: 'Sunny Day', hex: '#ffad07' },
-  { name: 'Teal', hex: '#027f89' },
-  { name: 'Thunder', hex: '#898584' },
-  { name: 'True Grey', hex: '#84787a' },
-  { name: 'Violet', hex: '#caa1be' },
-  { name: 'White', hex: '#e6e4e8' },
-
-  { name: 'Almond', hex: '#B19D8F' },
-  { name: 'Apricot', hex: '#DDAA8F' },
-  { name: 'Baked Clay', hex: '#AD6152' },
-  { name: 'Barely Pink', hex: '#DECBC8' },
-  { name: 'Cloud', hex: '#DCD1C6' },
-  { name: 'Dark Emerald', hex: '#0D5D57' },
-  { name: 'Fuchsia Blooms', hex: '#C0124E' },
-  { name: 'Glacier', hex: '#93B9C4' },
-  { name: 'Guacamole', hex: '#5C8446' },
-  { name: 'Jasmine Green', hex: '#96CD70' },
-  { name: 'Laurel', hex: '#A0A293' },
-  { name: 'Lemon', hex: '#F8C868' },
-  { name: 'Orchid', hex: '#D09CA8' },
-  { name: 'Orchid Bloom', hex: '#C1B0CC' },
-  { name: 'Peach Pink', hex: '#EF8969' },
-  { name: 'Sphagnum', hex: '#56583D' },
-  { name: 'Walnut', hex: '#503928' },
-  { name: 'White Smoke', hex: '#B4B7B9' },
-];
 
 const toggleWound = (id: number) => {
   const next = new Set(woundBobbins.value);
