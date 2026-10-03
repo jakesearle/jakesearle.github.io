@@ -270,8 +270,11 @@ function claudeScan(target, textFiles) {
       '-p',
       '--model',
       'haiku',
+      // --json-schema delivers the answer as a tool call, which costs a turn
+      // of its own: a clean run reports num_turns 2. At 1 the cap landed below
+      // the happy path and roughly half of runs died as error_max_turns.
       '--max-turns',
-      '1',
+      '3',
       '--no-session-persistence',
       '--disable-slash-commands',
       '--output-format',
@@ -284,10 +287,19 @@ function claudeScan(target, textFiles) {
   );
 
   if (res.error || res.status !== 0) {
+    // The CLI reports its own failures in the stdout envelope and leaves
+    // stderr empty, so check there before falling back to a bare exit code.
+    let subtype = '';
+    try {
+      subtype = JSON.parse(res.stdout || '{}').subtype || '';
+    } catch {
+      // Not JSON (crashed before emitting the envelope) — stderr it is.
+    }
     const why =
       res.error?.code === 'ETIMEDOUT'
         ? `timed out after ${CLAUDE_TIMEOUT_MS / 1000}s`
         : (res.stderr || '').trim().split('\n').pop() ||
+          subtype ||
           `exited ${res.status ?? res.error?.code ?? 'abnormally'}`;
     return { skipped: why.slice(0, 200) };
   }
