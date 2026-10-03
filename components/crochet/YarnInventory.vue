@@ -131,18 +131,6 @@ const visibleYarns = computed(() => {
 const ownedCount = computed(() => owned.value.size);
 const totalCount = computed(() => impeccableYarns.length);
 
-const markAllVisible = () => {
-  const next = new Set(owned.value);
-  for (const yarn of visibleYarns.value) next.add(yarn.name);
-  owned.value = next;
-};
-
-const clearAllVisible = () => {
-  const next = new Set(owned.value);
-  for (const yarn of visibleYarns.value) next.delete(yarn.name);
-  owned.value = next;
-};
-
 // Guards the only destructive control on the page — a mis-click here would
 // wipe an inventory that took a while to tick through.
 const confirmingReset = ref(false);
@@ -195,8 +183,6 @@ const copyOwned = async () => {
     </div>
 
     <div class="bulk-actions">
-      <button @click="markAllVisible">Mark all shown</button>
-      <button @click="clearAllVisible">Unmark all shown</button>
       <button :disabled="ownedCount === 0" @click="copyOwned">
         {{ copied ? 'Copied!' : 'Copy my list' }}
       </button>
