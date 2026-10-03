@@ -22,6 +22,7 @@ List of my crochet projects
 - [Leaf Tool](./tools/leaf-tool.md)
 - [Whale Tool](./tools/whale-tool.md)
 - [Intarsia Planner](./tools/intarsia/)
+- [Yarn Inventory](./tools/yarn-inventory.md)
 
 ## Outside Tools
 
