@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watchEffect } from 'vue';
-import { impeccableYarns } from '../../utils/impeccable-yarns';
+import { impeccableYarns, type ImpeccableYarn } from '../../utils/impeccable-yarns';
 
 const imageData = ref<ImageData | null>(null);
 const canvas = ref<HTMLCanvasElement | null>(null);
@@ -200,9 +200,7 @@ const defaultColorCount = computed(() => {
 // is loaded so each pattern starts from its own natural default.
 const targetColorCount = ref<number | null>(null);
 
-const effectiveTargetColorCount = computed(
-  () => targetColorCount.value ?? defaultColorCount.value
-);
+const effectiveTargetColorCount = computed(() => targetColorCount.value ?? defaultColorCount.value);
 
 const targetColorCountInput = computed({
   get: () => effectiveTargetColorCount.value,
@@ -267,11 +265,17 @@ const minStitchCountInput = computed({
 });
 
 const incrementMinStitchCount = () => {
-  minStitchCountOverride.value = Math.min(effectiveMinStitchCount.value + 1, maxMinStitchCount.value);
+  minStitchCountOverride.value = Math.min(
+    effectiveMinStitchCount.value + 1,
+    maxMinStitchCount.value
+  );
 };
 
 const decrementMinStitchCount = () => {
-  minStitchCountOverride.value = Math.max(effectiveMinStitchCount.value - 1, minMinStitchCount.value);
+  minStitchCountOverride.value = Math.max(
+    effectiveMinStitchCount.value - 1,
+    minMinStitchCount.value
+  );
 };
 
 const filterSmallColorGroups = (
@@ -605,9 +609,7 @@ const maxBobbinsInRow = computed(() => {
   let maxCount = 0;
 
   for (const row of mergedColorGroups.value) {
-    const uniqueGroups = new Set(
-      row.filter((g) => g.color !== null).map((g) => g.mergedGroupId)
-    );
+    const uniqueGroups = new Set(row.filter((g) => g.color !== null).map((g) => g.mergedGroupId));
     maxCount = Math.max(maxCount, uniqueGroups.size);
   }
 
@@ -822,7 +824,8 @@ const hungarianAlgorithm = (costMatrix: number[][]): number[] => {
 };
 
 const getOptimalYarnMapping = (
-  patternColors: string[]
+  patternColors: string[],
+  yarns: ImpeccableYarn[] = impeccableYarns
 ): Map<string, (typeof impeccableYarns)[0]> => {
   const mapping = new Map<string, (typeof impeccableYarns)[0]>();
 
@@ -832,7 +835,7 @@ const getOptimalYarnMapping = (
   for (const patternColor of patternColors) {
     const patternHex = rgbaToHex(patternColor);
     const row: number[] = [];
-    for (const yarn of impeccableYarns) {
+    for (const yarn of yarns) {
       const distance = oklabColorDistance(patternHex, yarn.hex);
       row.push(distance);
     }
@@ -845,17 +848,58 @@ const getOptimalYarnMapping = (
   // Build mapping from assignment
   for (let i = 0; i < patternColors.length; i++) {
     const yarnIndex = assignment[i];
-    if (yarnIndex !== -1 && yarnIndex < impeccableYarns.length) {
-      mapping.set(patternColors[i], impeccableYarns[yarnIndex]);
+    if (yarnIndex !== -1 && yarnIndex < yarns.length) {
+      mapping.set(patternColors[i], yarns[yarnIndex]);
     }
   }
 
   return mapping;
 };
 
+// Yarns the user has hand-picked via the palette's swap popup, keyed by
+// pattern color. Overridden colors keep their pick; the remaining colors are
+// optimally matched against the yarns nobody has claimed yet, so a swap never
+// leaves two pattern colors sharing one yarn.
+const yarnOverrides = ref(new Map<string, ImpeccableYarn>());
+
 const yarnMapping = computed(() => {
-  return getOptimalYarnMapping(colorPalette.value);
+  const overrides = new Map<string, ImpeccableYarn>();
+  for (const color of colorPalette.value) {
+    const yarn = yarnOverrides.value.get(color);
+    if (yarn) overrides.set(color, yarn);
+  }
+  const claimed = new Set(Array.from(overrides.values(), (yarn) => yarn.name));
+  const mapping = getOptimalYarnMapping(
+    colorPalette.value.filter((color) => !overrides.has(color)),
+    impeccableYarns.filter((yarn) => !claimed.has(yarn.name))
+  );
+  for (const [color, yarn] of overrides) mapping.set(color, yarn);
+  return mapping;
 });
+
+// The pattern color whose swap popup is open, if any.
+const swapTarget = ref<string | null>(null);
+
+const swapCandidates = computed(() => {
+  const target = swapTarget.value;
+  if (target === null) return [];
+  const used = new Set(Array.from(yarnMapping.value.values(), (yarn) => yarn.name));
+  const targetHex = rgbaToHex(target);
+  return impeccableYarns
+    .filter((yarn) => !used.has(yarn.name))
+    .map((yarn) => ({ yarn, distance: oklabColorDistance(targetHex, yarn.hex) }))
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, 3)
+    .map(({ yarn }) => yarn);
+});
+
+const swapYarn = (yarn: ImpeccableYarn) => {
+  if (swapTarget.value === null) return;
+  const next = new Map(yarnOverrides.value);
+  next.set(swapTarget.value, yarn);
+  yarnOverrides.value = next;
+  swapTarget.value = null;
+};
 
 const gridDataWithYarnColors = computed(() => {
   const mapping = yarnMapping.value;
@@ -952,6 +996,7 @@ const handleFileUpload = (event: Event) => {
       currentRow.value = null;
       targetColorCount.value = null;
       minStitchCountOverride.value = null;
+      yarnOverrides.value = new Map();
     };
     img.src = e.target?.result as string;
   };
@@ -1125,12 +1170,18 @@ const yarnToRgba = (yarn: { hex: string }) => {
             </p>
             <p class="setting-stat">
               <template v-if="minStitchFilterEnabled">
-                {{ removedSmallColorCount }} too small color{{ removedSmallColorCount === 1 ? '' : 's' }}
+                {{ removedSmallColorCount }} too small color{{
+                  removedSmallColorCount === 1 ? '' : 's'
+                }}
                 removed
               </template>
               <template v-else>Filter disabled — no colors removed</template>
             </p>
-            <canvas v-if="gridData.length > 0" ref="previewCanvas" class="color-preview-canvas"></canvas>
+            <canvas
+              v-if="gridData.length > 0"
+              ref="previewCanvas"
+              class="color-preview-canvas"
+            ></canvas>
           </div>
           <div class="setting-item">
             <label for="gauge">Gauge (in./st.)</label>
@@ -1396,6 +1447,48 @@ const yarnToRgba = (yarn: { hex: string }) => {
             <div class="palette-stitches">{{ item.stitches }} stitches</div>
             <div class="palette-stitches">{{ item.yardage }} yards</div>
           </div>
+          <button class="swap-btn" title="Swap yarn" @click="swapTarget = item.color">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="m16 3 4 4-4 4"></path>
+              <path d="M20 7H4"></path>
+              <path d="m8 21-4-4 4-4"></path>
+              <path d="M4 17h16"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="swapTarget !== null" class="settings-popup" @click.self="swapTarget = null">
+      <div class="settings-content swap-content">
+        <div class="settings-header">
+          <h3>Swap {{ yarnMapping.get(swapTarget)?.name }}</h3>
+          <button class="close-btn" @click="swapTarget = null">×</button>
+        </div>
+        <div class="settings-body">
+          <p v-if="swapCandidates.length === 0" class="setting-description">
+            Every yarn is already in the palette.
+          </p>
+          <button
+            v-for="yarn in swapCandidates"
+            :key="yarn.name"
+            class="swap-option"
+            @click="swapYarn(yarn)"
+          >
+            <span class="swap-option-swatch" :style="{ backgroundColor: yarn.hex }" />
+            <span class="palette-name">{{ yarn.name }}</span>
+            <span class="palette-color">{{ yarn.hex }}</span>
+          </button>
         </div>
       </div>
     </div>
@@ -2139,5 +2232,70 @@ const yarnToRgba = (yarn: { hex: string }) => {
 .palette-stitches {
   font-size: 0.75rem;
   color: var(--vp-c-text-3);
+}
+
+.swap-btn {
+  margin-left: auto;
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  color: var(--vp-c-text-3);
+  display: flex;
+  transition:
+    background-color 0.25s,
+    color 0.25s;
+}
+
+.swap-btn:hover {
+  background-color: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+}
+
+.swap-content {
+  max-width: 360px;
+}
+
+.swap-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 0.5rem;
+  background-color: var(--vp-c-bg-soft);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.25s;
+}
+
+.swap-option:last-child {
+  margin-bottom: 0;
+}
+
+.swap-option:hover {
+  border-color: var(--vp-c-brand-1);
+}
+
+.swap-option-swatch {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--vp-c-border);
+  flex-shrink: 0;
+}
+
+.swap-option .palette-color {
+  margin-left: auto;
+}
+
+@media print {
+  .swap-btn {
+    display: none;
+  }
 }
 </style>
