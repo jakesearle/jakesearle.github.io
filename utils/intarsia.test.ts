@@ -14,6 +14,11 @@ import {
   hungarianAlgorithm,
   maxBobbinsInRow,
   mergeColorGroups,
+  readPatternMetadata,
+  readTextChunk,
+  resolvePatternYarns,
+  insertTextChunk,
+  writePatternMetadata,
   rgbaToHex,
   sortColorsByFrequency,
 } from './intarsia';
@@ -141,5 +146,82 @@ describe('convertToBodyMeasurements', () => {
     // 80" tall: fathom 80", cubit 20", palm 4".
     expect(convertToBodyMeasurements(101, 80)).toBe('1 fathom, 1 cubit, 1 palm');
     expect(convertToBodyMeasurements(0, 80)).toBe('0 palms');
+  });
+});
+
+describe('.int.png metadata', () => {
+  // Smallest structurally valid PNG: signature, IHDR (zeroed), IEND. The
+  // reader never inflates image data, so it needs nothing more.
+  const png = new Uint8Array([
+    ...[137, 80, 78, 71, 13, 10, 26, 10], // signature
+    ...[0, 0, 0, 13, 73, 72, 68, 82, ...new Array(13).fill(0), 0, 0, 0, 0], // IHDR
+    ...[0, 0, 0, 0, 73, 69, 78, 68, 0xae, 0x42, 0x60, 0x82], // IEND
+  ]);
+
+  const chunkTypes = (bytes: Uint8Array) => {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const types: string[] = [];
+    for (let offset = 8; offset < bytes.length;) {
+      const length = view.getUint32(offset);
+      types.push(String.fromCharCode(...bytes.subarray(offset + 4, offset + 8)));
+      offset += 12 + length;
+    }
+    return types;
+  };
+
+  it('round-trips through a tEXt chunk placed right after IHDR', () => {
+    const metadata = { version: 1 as const, yarns: { '#0a9ea9': 'Aqua', '#ecddcb': 'Aran' } };
+    const written = writePatternMetadata(png, metadata);
+    expect(readPatternMetadata(written)).toEqual(metadata);
+    expect(chunkTypes(written).slice(0, 2)).toEqual(['IHDR', 'tEXt']);
+    expect(chunkTypes(written).slice(2)).toEqual(chunkTypes(png).slice(1));
+  });
+
+  it('writes a valid chunk CRC', () => {
+    const written = insertTextChunk(png, 'k', 'v');
+    const view = new DataView(written.buffer);
+    const ihdrEnd = 8 + 12 + view.getUint32(8);
+    const length = view.getUint32(ihdrEnd);
+    const body = written.subarray(ihdrEnd + 4, ihdrEnd + 8 + length);
+    expect(new TextDecoder().decode(body)).toBe('tEXtk\0v');
+    expect(view.getUint32(ihdrEnd + 8 + length)).toBe(0xcb04f390);
+  });
+
+  it('escapes non-ASCII text so it survives Latin-1', () => {
+    const written = writePatternMetadata(png, { version: 1, yarns: { '#000000': 'Crème ☕' } });
+    expect(readPatternMetadata(written)?.yarns['#000000']).toBe('Crème ☕');
+  });
+
+  it('reads nothing from a plain PNG or a non-PNG', () => {
+    expect(readPatternMetadata(png)).toBeNull();
+    expect(readTextChunk(new Uint8Array([1, 2, 3]), 'intarsia')).toBeNull();
+  });
+});
+
+describe('resolvePatternYarns', () => {
+  const aqua = yarnByName('Aqua');
+  const aran = yarnByName('Aran');
+
+  it('prefers the yarn named in metadata even if its hex has changed', () => {
+    const resolved = resolvePatternYarns([RED], { version: 1, yarns: { '#ff0000': 'Aqua' } });
+    expect(resolved.get(RED)).toBe(aqua);
+  });
+
+  it('falls back to exact hex, then to the nearest unclaimed yarn', () => {
+    const aquaPixel = hexToRgba(aqua.hex);
+    const resolved = resolvePatternYarns([aquaPixel, hexToRgba(aran.hex), RED], null);
+    expect(resolved.get(aquaPixel)).toBe(aqua);
+    expect(resolved.get(hexToRgba(aran.hex))).toBe(aran);
+    expect(resolved.get(RED)).toBeDefined();
+    expect(new Set(Array.from(resolved.values(), (y) => y.name)).size).toBe(3);
+  });
+
+  it('ignores names that are no longer in the yarn list', () => {
+    const aquaPixel = hexToRgba(aqua.hex);
+    const resolved = resolvePatternYarns([aquaPixel], {
+      version: 1,
+      yarns: { [aqua.hex]: 'Discontinued' },
+    });
+    expect(resolved.get(aquaPixel)).toBe(aqua);
   });
 });

@@ -584,3 +584,158 @@ export const convertToBodyMeasurements = (inches: number, heightInches: number):
 
   return parts.length > 0 ? parts.join(', ') : '0 palms';
 };
+
+// ---------------------------------------------------------------------------
+// .int.png files
+// ---------------------------------------------------------------------------
+//
+// A saved pattern is a PNG with one pixel per stitch, each pixel a yarn's hex
+// color, plus a tEXt chunk naming the yarn behind each color. The names let a
+// file survive hex codes being refreshed in the yarn list; without the chunk
+// (or for colors it doesn't name), colors fall back to exact-hex and then
+// nearest-yarn matching, so any plain PNG still imports.
+
+const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+const METADATA_KEYWORD = 'intarsia';
+
+export interface PatternMetadata {
+  version: 1;
+  // Pixel hex color -> yarn name.
+  yarns: Record<string, string>;
+}
+
+let crcTable: Uint32Array | null = null;
+
+const crc32 = (bytes: Uint8Array): number => {
+  if (!crcTable) {
+    crcTable = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      crcTable[n] = c >>> 0;
+    }
+  }
+  let crc = 0xffffffff;
+  for (const byte of bytes) crc = crcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+};
+
+const isPng = (png: Uint8Array): boolean =>
+  png.length >= 8 && PNG_SIGNATURE.every((byte, i) => png[i] === byte);
+
+// Calls `visit` with each chunk's type, data, and the offset just past it.
+const forEachChunk = (
+  png: Uint8Array,
+  visit: (type: string, data: Uint8Array, end: number) => boolean | void
+) => {
+  const view = new DataView(png.buffer, png.byteOffset, png.byteLength);
+  let offset = 8;
+  while (offset + 12 <= png.length) {
+    const length = view.getUint32(offset);
+    const type = String.fromCharCode(...png.subarray(offset + 4, offset + 8));
+    const data = png.subarray(offset + 8, offset + 8 + length);
+    const end = offset + 12 + length;
+    if (visit(type, data, end) === false) return;
+    offset = end;
+  }
+};
+
+// tEXt is Latin-1, so anything beyond ASCII is \u-escaped (still valid JSON).
+const toAscii = (text: string) =>
+  text.replace(/[\u0080-￿]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+
+// Returns a copy of `png` with a tEXt chunk inserted right after IHDR.
+export const insertTextChunk = (
+  png: Uint8Array,
+  keyword: string,
+  text: string
+): Uint8Array<ArrayBuffer> => {
+  if (!isPng(png)) throw new Error('Not a PNG file');
+
+  let ihdrEnd = -1;
+  forEachChunk(png, (type, _data, end) => {
+    if (type === 'IHDR') ihdrEnd = end;
+    return false;
+  });
+  if (ihdrEnd === -1) throw new Error('PNG is missing its IHDR chunk');
+
+  const body = new TextEncoder().encode(`tEXt${keyword}\0${toAscii(text)}`);
+  const chunk = new Uint8Array(body.length + 8);
+  const view = new DataView(chunk.buffer);
+  view.setUint32(0, body.length - 4);
+  chunk.set(body, 4);
+  view.setUint32(body.length + 4, crc32(body));
+
+  const result = new Uint8Array(png.length + chunk.length);
+  result.set(png.subarray(0, ihdrEnd), 0);
+  result.set(chunk, ihdrEnd);
+  result.set(png.subarray(ihdrEnd), ihdrEnd + chunk.length);
+  return result;
+};
+
+export const readTextChunk = (png: Uint8Array, keyword: string): string | null => {
+  if (!isPng(png)) return null;
+
+  let text: string | null = null;
+  forEachChunk(png, (type, data) => {
+    if (type !== 'tEXt') return;
+    const separator = data.indexOf(0);
+    if (separator === -1) return;
+    if (new TextDecoder('latin1').decode(data.subarray(0, separator)) !== keyword) return;
+    text = new TextDecoder('latin1').decode(data.subarray(separator + 1));
+    return false;
+  });
+  return text;
+};
+
+export const writePatternMetadata = (
+  png: Uint8Array,
+  metadata: PatternMetadata
+): Uint8Array<ArrayBuffer> => insertTextChunk(png, METADATA_KEYWORD, JSON.stringify(metadata));
+
+// null for a PNG with no (or unreadable) intarsia metadata.
+export const readPatternMetadata = (png: Uint8Array): PatternMetadata | null => {
+  const text = readTextChunk(png, METADATA_KEYWORD);
+  if (text === null) return null;
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed?.version !== 1 || typeof parsed.yarns !== 'object' || parsed.yarns === null) {
+      return null;
+    }
+    return parsed as PatternMetadata;
+  } catch {
+    return null;
+  }
+};
+
+// Maps each color in a loaded pattern to a yarn: first by the name saved in
+// the file's metadata, then by exact hex, then by nearest unclaimed yarn.
+export const resolvePatternYarns = (
+  patternColors: string[],
+  metadata: PatternMetadata | null,
+  yarns: ImpeccableYarn[] = impeccableYarns
+): Map<string, ImpeccableYarn> => {
+  const byName = new Map(yarns.map((yarn) => [yarn.name, yarn]));
+  const byHex = new Map(yarns.map((yarn) => [yarn.hex.toLowerCase(), yarn]));
+  const resolved = new Map<string, ImpeccableYarn>();
+  const claimed = new Set<string>();
+
+  const claim = (color: string, yarn: ImpeccableYarn | undefined) => {
+    if (!yarn || claimed.has(yarn.name) || resolved.has(color)) return;
+    resolved.set(color, yarn);
+    claimed.add(yarn.name);
+  };
+
+  for (const color of patternColors) {
+    const name = metadata?.yarns[rgbaToHex(color)];
+    if (name) claim(color, byName.get(name));
+  }
+  for (const color of patternColors) claim(color, byHex.get(rgbaToHex(color)));
+
+  const nearest = getOptimalYarnMapping(
+    patternColors.filter((color) => !resolved.has(color)),
+    yarns.filter((yarn) => !claimed.has(yarn.name))
+  );
+  for (const [color, yarn] of nearest) resolved.set(color, yarn);
+  return resolved;
+};

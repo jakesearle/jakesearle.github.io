@@ -18,6 +18,7 @@ import {
   oklabColorDistance,
   rgbaToHex,
   sortColorsByFrequency,
+  writePatternMetadata,
   yarnLengthInches,
   type ColorGroup,
 } from '../../utils/intarsia';
@@ -434,11 +435,7 @@ const gridDataWithYarnColors = computed(() => {
 // stitch) so the settings preview stays crisp when scaled up by CSS, letting
 // the color-count change be judged without closing the settings pane. Empty
 // (transparent) cells are simply left unpainted.
-watchEffect(() => {
-  const canvasEl = previewCanvas.value;
-  const grid = gridDataWithYarnColors.value;
-  if (!canvasEl || grid.length === 0) return;
-
+const drawPattern = (canvasEl: HTMLCanvasElement, grid: (string | null)[][]) => {
   const height = grid.length;
   const width = grid[0].length;
   canvasEl.width = width;
@@ -456,7 +453,43 @@ watchEffect(() => {
       ctx.fillRect(x, y, 1, 1);
     }
   }
+};
+
+watchEffect(() => {
+  const canvasEl = previewCanvas.value;
+  const grid = gridDataWithYarnColors.value;
+  if (!canvasEl || grid.length === 0) return;
+  drawPattern(canvasEl, grid);
 });
+
+// Base name of the imported file, for naming the downloaded .int.png.
+const sourceFileName = ref('pattern');
+
+// Saves the finished pattern (reduction, swaps and all) as an .int.png: one
+// pixel per stitch in its yarn's color, with the yarn names embedded.
+const downloadPattern = async () => {
+  const grid = gridDataWithYarnColors.value;
+  if (grid.length === 0) return;
+
+  const canvasEl = document.createElement('canvas');
+  drawPattern(canvasEl, grid);
+  const blob = await new Promise<Blob | null>((resolve) => canvasEl.toBlob(resolve, 'image/png'));
+  if (!blob) return;
+
+  const yarns: Record<string, string> = {};
+  for (const yarn of yarnMapping.value.values()) yarns[yarn.hex.toLowerCase()] = yarn.name;
+  const png = writePatternMetadata(new Uint8Array(await blob.arrayBuffer()), {
+    version: 1,
+    yarns,
+  });
+
+  const url = URL.createObjectURL(new Blob([png], { type: 'image/png' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${sourceFileName.value}.int.png`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
 
 const colorPaletteWithNames = computed(() => {
   const colors = colorPalette.value;
@@ -494,6 +527,7 @@ const handleFileUpload = (event: Event) => {
   const file = target.files?.[0];
 
   if (!file) return;
+  sourceFileName.value = file.name.replace(/(\.int)?\.png$/i, '') || 'pattern';
 
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -548,6 +582,9 @@ const yarnToRgba = (yarn: { hex: string }) => {
       <button class="upload-btn" @click="triggerFileInput">Import PNG Pattern</button>
       <button v-if="gridData.length > 0" class="print-btn" @click="printPage">
         Print / Save as PDF
+      </button>
+      <button v-if="gridData.length > 0" class="print-btn" @click="downloadPattern">
+        Download .int.png
       </button>
       <div v-if="gridData.length > 0" class="row-nav">
         <button class="nav-btn" title="Previous row" @click="moveUp">▲</button>
