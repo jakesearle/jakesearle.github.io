@@ -5,6 +5,7 @@ import { impeccableYarns, type ImpeccableYarn } from '../../utils/impeccable-yar
 import {
   DEFAULT_COLOR_THRESHOLD,
   applyColorMapping,
+  applyStitchEdits,
   buildColorMapping,
   buildColorMappingForTargetCount,
   bytesToDataUrl,
@@ -13,13 +14,17 @@ import {
   gridFromImageData,
   hexToRgb,
   loadTrackerState,
+  neighborColors,
   oklabColorDistance,
   rgbaToHex,
   saveTrackerState,
+  singleStitches,
+  stitchKey,
   sortColorsByFrequency,
   trackerHasProgress,
   writePatternMetadata,
   type Grid,
+  type Stitch,
 } from '../../utils/intarsia';
 
 const router = useRouter();
@@ -149,7 +154,76 @@ const removedSmallColorCount = computed(() => {
   return Math.max(0, beforeCount - afterCount);
 });
 
-const gridData = computed(() => applyColorMapping(rawGrid.value, filteredColorMapping.value));
+const reducedGrid = computed(() => applyColorMapping(rawGrid.value, filteredColorMapping.value));
+
+// Stitches the user has recolored to a neighbor's color, keyed by stitchKey.
+// Applied before yarn matching, so swaps and the export pick them up.
+const stitchEdits = ref(new Map<string, string>());
+
+const gridData = computed(() => applyStitchEdits(reducedGrid.value, stitchEdits.value));
+
+const showSingleStitches = ref(false);
+
+const singleStitchList = computed(() => singleStitches(gridData.value));
+
+const singleStitchKeys = computed(() => new Set(singleStitchList.value.map(stitchKey)));
+
+// Edits that still change something; ones made before a color-count change
+// can stop applying (see applyStitchEdits).
+const activeEdits = computed(() => {
+  const stitches: Stitch[] = [];
+  for (const [key, color] of stitchEdits.value) {
+    const [x, y] = key.split(',').map(Number);
+    if (gridData.value[y]?.[x] === color && reducedGrid.value[y]?.[x] !== color) {
+      stitches.push({ x, y });
+    }
+  }
+  return stitches;
+});
+
+// The stitch whose recolor popup is open, if any.
+const editTarget = ref<Stitch | null>(null);
+
+const editOptions = computed(() => {
+  const target = editTarget.value;
+  if (target === null) return [];
+  return neighborColors(gridData.value, target).map((color) => ({
+    color,
+    yarn: yarnMapping.value.get(color) || { name: 'Unknown', hex: rgbaToHex(color) },
+  }));
+});
+
+const editTargetYarn = computed(() => {
+  const target = editTarget.value;
+  const color = target && gridData.value[target.y]?.[target.x];
+  return color ? yarnMapping.value.get(color) : undefined;
+});
+
+const editTargetIsEdited = computed(
+  () => editTarget.value !== null && stitchEdits.value.has(stitchKey(editTarget.value))
+);
+
+const recolorStitch = (color: string | null) => {
+  const target = editTarget.value;
+  if (target === null) return;
+  const next = new Map(stitchEdits.value);
+  if (color === null) next.delete(stitchKey(target));
+  else next.set(stitchKey(target), color);
+  stitchEdits.value = next;
+  editTarget.value = null;
+};
+
+const handlePreviewClick = (event: MouseEvent) => {
+  const canvasEl = previewCanvas.value;
+  if (!showSingleStitches.value || !canvasEl || gridData.value.length === 0) return;
+  const rect = canvasEl.getBoundingClientRect();
+  const x = Math.floor(((event.clientX - rect.left) / rect.width) * gridData.value[0].length);
+  const y = Math.floor(((event.clientY - rect.top) / rect.height) * gridData.value.length);
+  const stitch = { x, y };
+  if (singleStitchKeys.value.has(stitchKey(stitch)) || stitchEdits.value.has(stitchKey(stitch))) {
+    editTarget.value = stitch;
+  }
+};
 
 const colorPalette = computed(() => {
   const colors = new Set<string>();
@@ -230,11 +304,42 @@ const drawPattern = (canvasEl: HTMLCanvasElement, grid: Grid, cellSize = 1) => {
   }
 };
 
+// Rings each stitch, dark outside and `color` inside so it shows on any
+// stitch color.
+const outlineStitches = (
+  canvasEl: HTMLCanvasElement,
+  stitches: Stitch[],
+  cellSize: number,
+  color: string
+) => {
+  const ctx = canvasEl.getContext('2d');
+  if (!ctx) return;
+  for (const [style, width, inset] of [
+    ['rgba(0,0,0,0.85)', 3, 1.5],
+    [color, 1.5, 1.5],
+  ] as const) {
+    ctx.strokeStyle = style;
+    ctx.lineWidth = width;
+    for (const { x, y } of stitches) {
+      ctx.strokeRect(
+        x * cellSize + inset,
+        y * cellSize + inset,
+        cellSize - inset * 2,
+        cellSize - inset * 2
+      );
+    }
+  }
+};
+
 watchEffect(() => {
   const canvasEl = previewCanvas.value;
   const grid = gridDataWithYarnColors.value;
   if (!canvasEl || grid.length === 0) return;
   drawPattern(canvasEl, grid, PREVIEW_CELL_SIZE);
+  if (showSingleStitches.value) {
+    outlineStitches(canvasEl, singleStitchList.value, PREVIEW_CELL_SIZE, 'rgba(255,255,255,0.95)');
+    outlineStitches(canvasEl, activeEdits.value, PREVIEW_CELL_SIZE, '#facc15');
+  }
 });
 
 // Base name of the imported file, for naming the downloaded .int.png.
@@ -340,6 +445,7 @@ const handleFileUpload = (event: Event) => {
       targetColorCount.value = null;
       minStitchCountOverride.value = null;
       yarnOverrides.value = new Map();
+      stitchEdits.value = new Map();
     };
     img.src = e.target?.result as string;
   };
@@ -382,7 +488,9 @@ const yarnToRgba = (yarn: { hex: string }) => {
         <canvas
           ref="previewCanvas"
           class="pattern-preview"
+          :class="{ 'pattern-preview-editing': showSingleStitches }"
           :style="{ maxWidth: `${gridData[0].length * PREVIEW_CELL_SIZE}px` }"
+          @click="handlePreviewClick"
         ></canvas>
       </div>
       <div class="maker-settings">
@@ -486,6 +594,29 @@ const yarnToRgba = (yarn: { hex: string }) => {
             <template v-else>Filter disabled — no colors removed</template>
           </p>
         </div>
+        <div class="setting-item">
+          <div class="setting-item-header">
+            <label for="single-stitches">Single Stitches</label>
+            <label class="min-stitches-toggle">
+              <input id="single-stitches" v-model="showSingleStitches" type="checkbox" />
+              Highlight
+            </label>
+          </div>
+          <p class="setting-description">
+            Stitches that are the only one of their color in their row. Highlight them (white
+            rings), then click one to recolor it to a neighboring color. Edited stitches get yellow
+            rings; click one again to undo.
+          </p>
+          <p class="setting-stat">
+            {{ singleStitchList.length }} single stitch{{
+              singleStitchList.length === 1 ? '' : 'es'
+            }}
+            <template v-if="activeEdits.length > 0">
+              · {{ activeEdits.length }} edited
+              <button type="button" class="link-btn" @click="stitchEdits = new Map()">Reset</button>
+            </template>
+          </p>
+        </div>
       </div>
     </div>
 
@@ -546,6 +677,33 @@ const yarnToRgba = (yarn: { hex: string }) => {
         </div>
       </div>
     </details>
+
+    <div v-if="editTarget !== null" class="settings-popup" @click.self="editTarget = null">
+      <div class="settings-content swap-content">
+        <div class="settings-header">
+          <h3>Recolor {{ editTargetYarn?.name }} stitch</h3>
+          <button class="close-btn" @click="editTarget = null">×</button>
+        </div>
+        <div class="settings-body">
+          <p v-if="editOptions.length === 0 && !editTargetIsEdited" class="setting-description">
+            Every neighbor is already this color.
+          </p>
+          <button
+            v-for="option in editOptions"
+            :key="option.color"
+            class="swap-option"
+            @click="recolorStitch(option.color)"
+          >
+            <span class="swap-option-swatch" :style="{ backgroundColor: option.yarn.hex }" />
+            <span class="palette-name">{{ option.yarn.name }}</span>
+            <span class="palette-color">{{ option.yarn.hex }}</span>
+          </button>
+          <button v-if="editTargetIsEdited" class="swap-option" @click="recolorStitch(null)">
+            <span class="palette-name">Undo edit</span>
+          </button>
+        </div>
+      </div>
+    </div>
 
     <div v-if="swapTarget !== null" class="settings-popup" @click.self="swapTarget = null">
       <div class="settings-content swap-content">
@@ -1051,6 +1209,23 @@ const yarnToRgba = (yarn: { hex: string }) => {
   display: block;
   width: 100%;
   height: auto;
+}
+
+.pattern-preview-editing {
+  cursor: pointer;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--vp-c-brand-1);
+  cursor: pointer;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
 }
 
 .maker-settings {

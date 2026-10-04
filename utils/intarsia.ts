@@ -285,6 +285,57 @@ export const applyColorMapping = (grid: Grid, mapping: Map<string, string>): Gri
   grid.map((row) => row.map((color) => (color === null ? null : mapping.get(color) || color)));
 
 // ---------------------------------------------------------------------------
+// Single-stitch edits
+// ---------------------------------------------------------------------------
+
+export interface Stitch {
+  x: number;
+  y: number;
+}
+
+export const stitchKey = ({ x, y }: Stitch) => `${x},${y}`;
+
+// Stitches whose color run in their row is one stitch long — each needs its
+// own bobbin change for a single stitch, so they're worth a second look.
+export const singleStitches = (grid: Grid): Stitch[] => {
+  const result: Stitch[] = [];
+  grid.forEach((row, y) => {
+    row.forEach((color, x) => {
+      if (color !== null && row[x - 1] !== color && row[x + 1] !== color) {
+        result.push({ x, y });
+      }
+    });
+  });
+  return result;
+};
+
+// The distinct colors of a stitch's four neighbors, other than its own,
+// nearest to its own color first.
+export const neighborColors = (grid: Grid, { x, y }: Stitch): string[] => {
+  const own = grid[y]?.[x];
+  if (own == null) return [];
+  const neighbors = [grid[y]?.[x - 1], grid[y]?.[x + 1], grid[y - 1]?.[x], grid[y + 1]?.[x]];
+  const distinct = new Set(
+    neighbors.filter((color): color is string => color != null && color !== own)
+  );
+  return [...distinct].sort((a, b) => colorDistance(own, a) - colorDistance(own, b));
+};
+
+// Recolors individual stitches (edits keyed by stitchKey). Edits to a color
+// the grid no longer contains, or that match the stitch already, are skipped,
+// so edits made before a color-count change can't resurrect a merged color.
+export const applyStitchEdits = (grid: Grid, edits: Map<string, string>): Grid => {
+  if (edits.size === 0) return grid;
+  const colors = new Set(grid.flat());
+  return grid.map((row, y) =>
+    row.map((color, x) => {
+      const edit = edits.get(stitchKey({ x, y }));
+      return color !== null && edit !== undefined && colors.has(edit) ? edit : color;
+    })
+  );
+};
+
+// ---------------------------------------------------------------------------
 // Yarn matching
 // ---------------------------------------------------------------------------
 

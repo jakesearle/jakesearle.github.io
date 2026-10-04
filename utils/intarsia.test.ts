@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   type Grid,
   applyColorMapping,
+  applyStitchEdits,
+  neighborColors,
+  singleStitches,
   bobbinStitchCounts,
   buildColorMappingForTargetCount,
   computeColorGroups,
@@ -74,6 +77,37 @@ describe('color reduction', () => {
     const sorted = sortColorsByFrequency([[RED, BLUE]]);
     const identity = new Map(sorted.map(([color]) => [color, color]));
     expect(filterSmallColorGroups(identity, sorted, 5)).toBe(identity);
+  });
+});
+
+describe('single-stitch edits', () => {
+  it('finds stitches whose row run is one stitch long', () => {
+    expect(singleStitches(grid('AAB', 'ABA', '.A.'))).toEqual([
+      { x: 2, y: 0 },
+      { x: 0, y: 1 },
+      { x: 1, y: 1 },
+      { x: 2, y: 1 },
+      { x: 1, y: 2 },
+    ]);
+  });
+
+  it('lists distinct neighbor colors, nearest first', () => {
+    const g: Grid = [
+      [null, BLUE, null],
+      [NEAR_RED, RED, BLUE],
+      [null, RED, null],
+    ];
+    expect(neighborColors(g, { x: 1, y: 1 })).toEqual([NEAR_RED, BLUE]);
+    expect(neighborColors(g, { x: 0, y: 0 })).toEqual([]);
+  });
+
+  it('applies edits, skipping colors the grid no longer has', () => {
+    const g = grid('AB', 'BA');
+    const edits = new Map([
+      ['1,0', RED],
+      ['0,1', 'rgba(1,1,1,1)'],
+    ]);
+    expect(applyStitchEdits(g, edits)).toEqual(grid('AA', 'BA'));
   });
 });
 
