@@ -3,9 +3,11 @@ aside: false
 ---
 
 <script setup>
-import IntarsiaPlanner from '../../../components/crochet/IntarsiaPlanner.vue'
+import IntarsiaMaker from '../../../components/crochet/IntarsiaMaker.vue'
 </script>
 
-# Intarsia Planner
+# Intarsia Pattern Maker
 
-<IntarsiaPlanner />
+Turn a PNG into an intarsia pattern: reduce its colors, match them to yarns, then download the result as an `.int.png` or open it in the [Pattern Tracker](./tracker).
+
+<IntarsiaMaker />

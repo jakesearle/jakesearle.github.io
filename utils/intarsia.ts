@@ -739,3 +739,68 @@ export const resolvePatternYarns = (
   for (const [color, yarn] of nearest) resolved.set(color, yarn);
   return resolved;
 };
+
+export const bytesToDataUrl = (bytes: Uint8Array, type = 'image/png'): string => {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return `data:${type};base64,${btoa(binary)}`;
+};
+
+export const dataUrlToBytes = (dataUrl: string): Uint8Array => {
+  const binary = atob(dataUrl.slice(dataUrl.indexOf(',') + 1));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+};
+
+// ---------------------------------------------------------------------------
+// Tracker storage
+// ---------------------------------------------------------------------------
+//
+// The Tracker keeps one pattern (as its .int.png data URL) and the progress
+// made on it in localStorage. The Maker writes the same entry for "Open in
+// Tracker". localStorage can be missing or full, so every access is guarded.
+
+const TRACKER_STORAGE_KEY = 'intarsia-tracker';
+
+export interface TrackerState {
+  png: string;
+  fileName: string;
+  currentRow: number | null;
+  woundBobbins: number[];
+}
+
+export const loadTrackerState = (): TrackerState | null => {
+  try {
+    const saved = localStorage.getItem(TRACKER_STORAGE_KEY);
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    if (typeof parsed?.png !== 'string') return null;
+    return {
+      png: parsed.png,
+      fileName: typeof parsed.fileName === 'string' ? parsed.fileName : 'pattern',
+      currentRow: typeof parsed.currentRow === 'number' ? parsed.currentRow : null,
+      woundBobbins: Array.isArray(parsed.woundBobbins)
+        ? parsed.woundBobbins.filter((id: unknown) => typeof id === 'number')
+        : [],
+    };
+  } catch {
+    return null;
+  }
+};
+
+// Returns whether the write succeeded (it fails when storage is full or
+// unavailable, e.g. in private browsing).
+export const saveTrackerState = (state: TrackerState): boolean => {
+  try {
+    localStorage.setItem(TRACKER_STORAGE_KEY, JSON.stringify(state));
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+export const trackerHasProgress = (state: TrackerState | null): boolean =>
+  state !== null && (state.currentRow !== null || state.woundBobbins.length > 0);

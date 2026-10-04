@@ -1,31 +1,28 @@
 <script setup lang="ts">
-import { ref, computed, watchEffect } from 'vue';
-import { impeccableYarns, type ImpeccableYarn } from '../../utils/impeccable-yarns';
+import { ref, computed, onMounted, watch } from 'vue';
+import { withBase } from 'vitepress';
+import { type ImpeccableYarn } from '../../utils/impeccable-yarns';
 import {
-  DEFAULT_COLOR_THRESHOLD,
-  applyColorMapping,
   bobbinStitchCounts,
-  buildColorMapping,
-  buildColorMappingForTargetCount,
+  bytesToDataUrl,
   computeColorGroups,
   convertToBodyMeasurements as toBodyMeasurements,
-  filterSmallColorGroups,
-  getYarnMappingWithOverrides,
+  dataUrlToBytes,
   gridFromImageData,
-  hexToRgb,
+  loadTrackerState,
   maxBobbinsInRow as countMaxBobbinsInRow,
   mergeColorGroups,
-  oklabColorDistance,
-  rgbaToHex,
-  sortColorsByFrequency,
-  writePatternMetadata,
+  readPatternMetadata,
+  resolvePatternYarns,
+  saveTrackerState,
   yarnLengthInches,
   type ColorGroup,
+  type Grid,
+  type PatternMetadata,
 } from '../../utils/intarsia';
 
-const imageData = ref<ImageData | null>(null);
-const canvas = ref<HTMLCanvasElement | null>(null);
-const previewCanvas = ref<HTMLCanvasElement | null>(null);
+const SETTINGS_STORAGE_KEY = 'intarsia-tracker-settings';
+
 const fileInput = ref<HTMLInputElement | null>(null);
 const showSettings = ref(false);
 const gauge = ref(2.1);
@@ -35,8 +32,20 @@ const tailLength = ref(10);
 const heightFeet = ref(6);
 const heightInches = ref(4);
 
+// The loaded pattern: its .int.png as a data URL (what gets saved), the
+// stitch grid read from it, and the yarn names embedded in it.
+const patternPng = ref<string | null>(null);
+const patternFileName = ref('pattern');
+const gridData = ref<Grid>([]);
+const metadata = ref<PatternMetadata | null>(null);
+const saveFailed = ref(false);
+
 const woundBobbins = ref(new Set<number>());
 const currentRow = ref<number | null>(null);
+
+// Saving waits until the stored pattern has been loaded, so the empty
+// initial state can't overwrite it.
+const hydrated = ref(false);
 
 const toggleWound = (id: number) => {
   const next = new Set(woundBobbins.value);
@@ -70,127 +79,84 @@ const palm = computed(() => (totalHeightInches.value / 20).toFixed(1));
 const convertToBodyMeasurements = (inches: number): string =>
   toBodyMeasurements(inches, totalHeightInches.value);
 
-const rawGrid = computed(() => (imageData.value ? gridFromImageData(imageData.value) : []));
+// Reads a PNG data URL into a stitch grid (one pixel per stitch).
+const decodePattern = (dataUrl: string): Promise<Grid> =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvasEl = document.createElement('canvas');
+      canvasEl.width = img.width;
+      canvasEl.height = img.height;
+      const ctx = canvasEl.getContext('2d');
+      if (!ctx) return reject(new Error('Canvas is unavailable'));
+      ctx.drawImage(img, 0, 0);
+      resolve(gridFromImageData(ctx.getImageData(0, 0, img.width, img.height)));
+    };
+    img.onerror = () => reject(new Error('Could not read the image'));
+    img.src = dataUrl;
+  });
 
-const sortedColorsByFrequency = computed(() => sortColorsByFrequency(rawGrid.value));
-
-// Number of distinct colors in the source image, before any merging.
-const rawColorCount = computed(() => sortedColorsByFrequency.value.length);
-
-const defaultColorCount = computed(() => {
-  if (sortedColorsByFrequency.value.length === 0) return 0;
-  const mapping = buildColorMapping(sortedColorsByFrequency.value, DEFAULT_COLOR_THRESHOLD);
-  return new Set(mapping.values()).size;
-});
-
-// null means "use this image's default count" — reset whenever a new image
-// is loaded so each pattern starts from its own natural default.
-const targetColorCount = ref<number | null>(null);
-
-const effectiveTargetColorCount = computed(() => targetColorCount.value ?? defaultColorCount.value);
-
-const targetColorCountInput = computed({
-  get: () => effectiveTargetColorCount.value,
-  set: (value: number) => {
-    targetColorCount.value = value;
-  },
-});
-
-// Can't usefully ask for more distinct pattern colors than there are raw
-// colors to draw from, or more than there are physical yarns to assign them
-// to (past that, the yarn-matching step runs out of yarns to hand out).
-const maxColorCount = computed(() => {
-  if (rawColorCount.value === 0) return 1;
-  return Math.min(rawColorCount.value, impeccableYarns.length);
-});
-
-const incrementColorCount = () => {
-  targetColorCount.value = Math.min(effectiveTargetColorCount.value + 1, maxColorCount.value);
+const loadPattern = async (dataUrl: string, fileName: string) => {
+  gridData.value = await decodePattern(dataUrl);
+  metadata.value = readPatternMetadata(dataUrlToBytes(dataUrl));
+  patternPng.value = dataUrl;
+  patternFileName.value = fileName;
 };
 
-const decrementColorCount = () => {
-  targetColorCount.value = Math.max(effectiveTargetColorCount.value - 1, 1);
-};
+onMounted(async () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) ?? 'null');
+    if (saved) {
+      const refs = { gauge, errorMargin, headLength, tailLength, heightFeet, heightInches };
+      for (const [key, target] of Object.entries(refs)) {
+        if (typeof saved[key] === 'number') target.value = saved[key];
+      }
+    }
+  } catch {
+    // Unreadable or unavailable storage — keep the defaults.
+  }
 
-// Minimum total stitches (across the whole pattern) a post-merge color needs
-// to survive as its own color, so a stray outlier hue doesn't get its own
-// bobbin for just a stitch or two. Colors under this get folded into their
-// nearest surviving neighbor. The default and bounds all scale with the
-// pattern's size, since "5 stitches" means something very different on a
-// 20-stitch-wide pattern than on a 200-stitch-wide one.
-// Counts only real (non-transparent) pixels — an image with a transparent
-// background shouldn't have its thresholds inflated by empty padding.
-const totalStitchCount = computed(() =>
-  sortedColorsByFrequency.value.reduce((sum, [, count]) => sum + count, 0)
-);
-
-const minMinStitchCount = computed(() => 1);
-const maxMinStitchCount = computed(() =>
-  Math.max(minMinStitchCount.value, Math.floor(totalStitchCount.value * 0.1))
-);
-const defaultMinStitchCount = computed(() => {
-  const value = Math.max(1, Math.floor(totalStitchCount.value * 0.01));
-  return Math.min(Math.max(value, minMinStitchCount.value), maxMinStitchCount.value);
+  const state = loadTrackerState();
+  if (state) {
+    try {
+      await loadPattern(state.png, state.fileName);
+      currentRow.value = state.currentRow;
+      woundBobbins.value = new Set(state.woundBobbins);
+    } catch {
+      // A stored pattern that no longer decodes is just dropped.
+    }
+  }
+  hydrated.value = true;
 });
 
-const minStitchFilterEnabled = ref(true);
-
-// null means "use this image's default" — reset whenever a new image is
-// loaded so each pattern starts from its own natural default.
-const minStitchCountOverride = ref<number | null>(null);
-
-const effectiveMinStitchCount = computed(() => {
-  const value = minStitchCountOverride.value ?? defaultMinStitchCount.value;
-  return Math.min(Math.max(value, minMinStitchCount.value), maxMinStitchCount.value);
+watch([patternPng, currentRow, woundBobbins], () => {
+  if (!hydrated.value || patternPng.value === null) return;
+  saveFailed.value = !saveTrackerState({
+    png: patternPng.value,
+    fileName: patternFileName.value,
+    currentRow: currentRow.value,
+    woundBobbins: [...woundBobbins.value],
+  });
 });
 
-const minStitchCountInput = computed({
-  get: () => effectiveMinStitchCount.value,
-  set: (value: number) => {
-    minStitchCountOverride.value = value;
-  },
+watch([gauge, errorMargin, headLength, tailLength, heightFeet, heightInches], () => {
+  if (!hydrated.value) return;
+  try {
+    localStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        gauge: gauge.value,
+        errorMargin: errorMargin.value,
+        headLength: headLength.value,
+        tailLength: tailLength.value,
+        heightFeet: heightFeet.value,
+        heightInches: heightInches.value,
+      })
+    );
+  } catch {
+    // ignore write failures (e.g. private browsing)
+  }
 });
-
-const incrementMinStitchCount = () => {
-  minStitchCountOverride.value = Math.min(
-    effectiveMinStitchCount.value + 1,
-    maxMinStitchCount.value
-  );
-};
-
-const decrementMinStitchCount = () => {
-  minStitchCountOverride.value = Math.max(
-    effectiveMinStitchCount.value - 1,
-    minMinStitchCount.value
-  );
-};
-
-const colorCountMapping = computed(() => {
-  if (rawGrid.value.length === 0) return new Map<string, string>();
-  return buildColorMappingForTargetCount(
-    sortedColorsByFrequency.value,
-    effectiveTargetColorCount.value
-  );
-});
-
-const filteredColorMapping = computed(() => {
-  if (!minStitchFilterEnabled.value) return colorCountMapping.value;
-  return filterSmallColorGroups(
-    colorCountMapping.value,
-    sortedColorsByFrequency.value,
-    effectiveMinStitchCount.value
-  );
-});
-
-// How many colors the "Minimum Stitches" filter folded away, on top of
-// whatever "Number of Colors" already merged — shown as a live stat.
-const removedSmallColorCount = computed(() => {
-  const beforeCount = new Set(colorCountMapping.value.values()).size;
-  const afterCount = new Set(filteredColorMapping.value.values()).size;
-  return Math.max(0, beforeCount - afterCount);
-});
-
-const gridData = computed(() => applyColorMapping(rawGrid.value, filteredColorMapping.value));
 
 const colorGroups = computed(() => computeColorGroups(gridData.value));
 
@@ -217,9 +183,6 @@ const getCellGroupInfo = (rowIndex: number, colIndex: number) => {
 const shouldShowGroupLabel = (rowIndex: number, colIndex: number) => {
   const group = getCellGroupInfo(rowIndex, colIndex);
   if (!group || group.color === null) return false;
-
-  const rowNumber = gridData.value.length - rowIndex;
-  const isOddRow = rowNumber % 2 === 1;
 
   for (let r = gridData.value.length - 1; r >= rowIndex; r--) {
     const currentRowNumber = gridData.value.length - r;
@@ -329,6 +292,8 @@ const colorPalette = computed(() => {
   return Array.from(colors);
 });
 
+const yarnMapping = computed(() => resolvePatternYarns(colorPalette.value, metadata.value));
+
 const maxBobbinsInRow = computed(() => countMaxBobbinsInRow(mergedColorGroups.value));
 
 const bobbinInfo = computed(() => {
@@ -388,38 +353,6 @@ const scrollToBobbin = (groupId: number) => {
   }
 };
 
-// Yarns the user has hand-picked via the palette's swap popup, keyed by
-// pattern color.
-const yarnOverrides = ref(new Map<string, ImpeccableYarn>());
-
-const yarnMapping = computed(() =>
-  getYarnMappingWithOverrides(colorPalette.value, yarnOverrides.value)
-);
-
-// The pattern color whose swap popup is open, if any.
-const swapTarget = ref<string | null>(null);
-
-const swapCandidates = computed(() => {
-  const target = swapTarget.value;
-  if (target === null) return [];
-  const used = new Set(Array.from(yarnMapping.value.values(), (yarn) => yarn.name));
-  const targetHex = rgbaToHex(target);
-  return impeccableYarns
-    .filter((yarn) => !used.has(yarn.name))
-    .map((yarn) => ({ yarn, distance: oklabColorDistance(targetHex, yarn.hex) }))
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, 3)
-    .map(({ yarn }) => yarn);
-});
-
-const swapYarn = (yarn: ImpeccableYarn) => {
-  if (swapTarget.value === null) return;
-  const next = new Map(yarnOverrides.value);
-  next.set(swapTarget.value, yarn);
-  yarnOverrides.value = next;
-  swapTarget.value = null;
-};
-
 const gridDataWithYarnColors = computed(() => {
   const mapping = yarnMapping.value;
   return gridData.value.map((row) =>
@@ -431,70 +364,8 @@ const gridDataWithYarnColors = computed(() => {
   );
 });
 
-// Draws the pattern at its native pixel resolution (one canvas pixel per
-// stitch) so the settings preview stays crisp when scaled up by CSS, letting
-// the color-count change be judged without closing the settings pane. Empty
-// (transparent) cells are simply left unpainted.
-const drawPattern = (canvasEl: HTMLCanvasElement, grid: (string | null)[][]) => {
-  const height = grid.length;
-  const width = grid[0].length;
-  canvasEl.width = width;
-  canvasEl.height = height;
-
-  const ctx = canvasEl.getContext('2d');
-  if (!ctx) return;
-
-  ctx.clearRect(0, 0, width, height);
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const color = grid[y][x];
-      if (color === null) continue;
-      ctx.fillStyle = color;
-      ctx.fillRect(x, y, 1, 1);
-    }
-  }
-};
-
-watchEffect(() => {
-  const canvasEl = previewCanvas.value;
-  const grid = gridDataWithYarnColors.value;
-  if (!canvasEl || grid.length === 0) return;
-  drawPattern(canvasEl, grid);
-});
-
-// Base name of the imported file, for naming the downloaded .int.png.
-const sourceFileName = ref('pattern');
-
-// Saves the finished pattern (reduction, swaps and all) as an .int.png: one
-// pixel per stitch in its yarn's color, with the yarn names embedded.
-const downloadPattern = async () => {
-  const grid = gridDataWithYarnColors.value;
-  if (grid.length === 0) return;
-
-  const canvasEl = document.createElement('canvas');
-  drawPattern(canvasEl, grid);
-  const blob = await new Promise<Blob | null>((resolve) => canvasEl.toBlob(resolve, 'image/png'));
-  if (!blob) return;
-
-  const yarns: Record<string, string> = {};
-  for (const yarn of yarnMapping.value.values()) yarns[yarn.hex.toLowerCase()] = yarn.name;
-  const png = writePatternMetadata(new Uint8Array(await blob.arrayBuffer()), {
-    version: 1,
-    yarns,
-  });
-
-  const url = URL.createObjectURL(new Blob([png], { type: 'image/png' }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${sourceFileName.value}.int.png`;
-  link.click();
-  URL.revokeObjectURL(url);
-};
-
 const colorPaletteWithNames = computed(() => {
-  const colors = colorPalette.value;
   const colorStitchCount = new Map<string, number>();
-
   for (const row of gridData.value) {
     for (const color of row) {
       if (color === null) continue;
@@ -503,54 +374,45 @@ const colorPaletteWithNames = computed(() => {
   }
 
   const mapping = yarnMapping.value;
-
-  const result = colors.map((color) => {
-    const yarn = mapping.get(color) || { name: 'Unknown', hex: '#000000' };
-    const stitches = colorStitchCount.get(color) || 0;
-    const yarnLengthYards = (yarnLengthInches(stitches, yardageSettings.value) / 36).toFixed(1);
-
-    return {
-      color,
-      name: yarn.name,
-      yarn: yarn,
-      hex: rgbaToHex(color),
-      stitches,
-      yardage: yarnLengthYards,
-    };
-  });
-
-  return result.sort((a, b) => b.stitches - a.stitches);
+  return colorPalette.value
+    .map((color) => {
+      const yarn: ImpeccableYarn = mapping.get(color) || { name: 'Unknown', hex: '#000000' };
+      const stitches = colorStitchCount.get(color) || 0;
+      return {
+        color,
+        yarn,
+        stitches,
+        yardage: (yarnLengthInches(stitches, yardageSettings.value) / 36).toFixed(1),
+      };
+    })
+    .sort((a, b) => b.stitches - a.stitches);
 });
 
-const handleFileUpload = (event: Event) => {
+const hasProgress = computed(() => currentRow.value !== null || woundBobbins.value.size > 0);
+
+const handleFileUpload = async (event: Event) => {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
-
+  // Clear the input so picking the same file again still fires a change.
+  target.value = '';
   if (!file) return;
-  sourceFileName.value = file.name.replace(/(\.int)?\.png$/i, '') || 'pattern';
 
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      if (!canvas.value) return;
+  if (
+    hasProgress.value &&
+    !window.confirm('Replace the current pattern? Your row and bobbin progress will be reset.')
+  ) {
+    return;
+  }
 
-      canvas.value.width = img.width;
-      canvas.value.height = img.height;
-
-      const ctx = canvas.value.getContext('2d');
-      if (!ctx) return;
-
-      ctx.drawImage(img, 0, 0);
-      imageData.value = ctx.getImageData(0, 0, img.width, img.height);
-      currentRow.value = null;
-      targetColorCount.value = null;
-      minStitchCountOverride.value = null;
-      yarnOverrides.value = new Map();
-    };
-    img.src = e.target?.result as string;
-  };
-  reader.readAsDataURL(file);
+  const dataUrl = bytesToDataUrl(new Uint8Array(await file.arrayBuffer()));
+  try {
+    await loadPattern(dataUrl, file.name.replace(/(\.int)?\.png$/i, '') || 'pattern');
+  } catch {
+    window.alert('Could not read that image.');
+    return;
+  }
+  currentRow.value = null;
+  woundBobbins.value = new Set();
 };
 
 const triggerFileInput = () => {
@@ -561,11 +423,6 @@ const printPage = () => {
   if (typeof window !== 'undefined') {
     window.print();
   }
-};
-
-const yarnToRgba = (yarn: { hex: string }) => {
-  const rgb = hexToRgb(yarn.hex);
-  return `rgba(${rgb.r},${rgb.g},${rgb.b},1)`;
 };
 </script>
 
@@ -579,12 +436,9 @@ const yarnToRgba = (yarn: { hex: string }) => {
         style="display: none"
         @change="handleFileUpload"
       />
-      <button class="upload-btn" @click="triggerFileInput">Import PNG Pattern</button>
+      <button class="upload-btn" @click="triggerFileInput">Import .int.png</button>
       <button v-if="gridData.length > 0" class="print-btn" @click="printPage">
         Print / Save as PDF
-      </button>
-      <button v-if="gridData.length > 0" class="print-btn" @click="downloadPattern">
-        Download .int.png
       </button>
       <div v-if="gridData.length > 0" class="row-nav">
         <button class="nav-btn" title="Previous row" @click="moveUp">▲</button>
@@ -613,6 +467,15 @@ const yarnToRgba = (yarn: { hex: string }) => {
       </button>
     </div>
 
+    <p v-if="gridData.length > 0 && !metadata" class="pattern-note">
+      This PNG wasn't made in the
+      <a :href="withBase('/crochet/tools/intarsia/')">Pattern Maker</a>
+      , so each of its colors was matched to the nearest yarn.
+    </p>
+    <p v-if="saveFailed" class="pattern-note">
+      Couldn't save to this browser's storage, so progress will be lost on reload.
+    </p>
+
     <div v-if="showSettings" class="settings-popup">
       <div class="settings-content">
         <div class="settings-header">
@@ -620,111 +483,6 @@ const yarnToRgba = (yarn: { hex: string }) => {
           <button class="close-btn" @click="showSettings = false">×</button>
         </div>
         <div class="settings-body">
-          <div class="setting-item">
-            <label for="color-count">Number of Colors</label>
-            <div class="setting-control">
-              <input
-                id="color-count"
-                v-model.number="targetColorCountInput"
-                type="range"
-                min="1"
-                :max="maxColorCount"
-              />
-              <button
-                type="button"
-                class="step-btn"
-                :disabled="effectiveTargetColorCount <= 1"
-                aria-label="Decrease number of colors"
-                @click="decrementColorCount"
-              >
-                −
-              </button>
-              <input
-                v-model.number="targetColorCountInput"
-                type="number"
-                min="1"
-                :max="maxColorCount"
-                class="threshold-input"
-              />
-              <button
-                type="button"
-                class="step-btn"
-                :disabled="effectiveTargetColorCount >= maxColorCount"
-                aria-label="Increase number of colors"
-                @click="incrementColorCount"
-              >
-                +
-              </button>
-            </div>
-            <p class="setting-description">
-              Target number of colors in the pattern. Similar colors in the source image are merged
-              together to reach this count — the Minimum Stitches filter below can then remove a few
-              more, so the final count may end up slightly lower.
-            </p>
-          </div>
-          <div class="setting-item">
-            <div class="setting-item-header">
-              <label for="min-stitches">Minimum Stitches</label>
-              <label class="min-stitches-toggle">
-                <input type="checkbox" v-model="minStitchFilterEnabled" />
-                Enabled
-              </label>
-            </div>
-            <div class="setting-control">
-              <input
-                id="min-stitches"
-                v-model.number="minStitchCountInput"
-                type="range"
-                :min="minMinStitchCount"
-                :max="maxMinStitchCount"
-                :disabled="!minStitchFilterEnabled"
-              />
-              <button
-                type="button"
-                class="step-btn"
-                :disabled="!minStitchFilterEnabled || effectiveMinStitchCount <= minMinStitchCount"
-                aria-label="Decrease minimum stitches"
-                @click="decrementMinStitchCount"
-              >
-                −
-              </button>
-              <input
-                v-model.number="minStitchCountInput"
-                type="number"
-                :min="minMinStitchCount"
-                :max="maxMinStitchCount"
-                class="threshold-input"
-                :disabled="!minStitchFilterEnabled"
-              />
-              <button
-                type="button"
-                class="step-btn"
-                :disabled="!minStitchFilterEnabled || effectiveMinStitchCount >= maxMinStitchCount"
-                aria-label="Increase minimum stitches"
-                @click="incrementMinStitchCount"
-              >
-                +
-              </button>
-            </div>
-            <p class="setting-description">
-              Colors used fewer than this many stitches total are folded into their nearest
-              neighboring color, instead of being left as a stray single-stitch color.
-            </p>
-            <p class="setting-stat">
-              <template v-if="minStitchFilterEnabled">
-                {{ removedSmallColorCount }} too small color{{
-                  removedSmallColorCount === 1 ? '' : 's'
-                }}
-                removed
-              </template>
-              <template v-else>Filter disabled — no colors removed</template>
-            </p>
-            <canvas
-              v-if="gridData.length > 0"
-              ref="previewCanvas"
-              class="color-preview-canvas"
-            ></canvas>
-          </div>
           <div class="setting-item">
             <label for="gauge">Gauge (in./st.)</label>
             <div class="setting-control">
@@ -830,25 +588,9 @@ const yarnToRgba = (yarn: { hex: string }) => {
               <span>{{ palm }} in.</span>
             </div>
           </div>
-          <div class="setting-item">
-            <label>Available Yarn Colors</label>
-            <div class="yarn-palette">
-              <div
-                v-for="yarn in impeccableYarns"
-                :key="yarn.name"
-                class="yarn-chip"
-                :title="yarn.name"
-              >
-                <div class="yarn-chip-swatch" :style="{ backgroundColor: yarn.hex }" />
-                <span class="yarn-chip-name">{{ yarn.name }}</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
-
-    <canvas ref="canvas" style="display: none"></canvas>
 
     <div v-if="gridData.length > 0" class="pattern-grid-container">
       <div class="pattern-grid">
@@ -922,9 +664,12 @@ const yarnToRgba = (yarn: { hex: string }) => {
       </div>
     </div>
 
-    <div v-else class="empty-state">
-      <p>Import a PNG image to see your crochet pattern grid</p>
-      <p class="hint">Each pixel will represent one stitch</p>
+    <div v-else-if="hydrated" class="empty-state">
+      <p>Import an .int.png to track your progress on it</p>
+      <p class="hint">
+        Make one from any PNG in the
+        <a :href="withBase('/crochet/tools/intarsia/')">Intarsia Pattern Maker</a>
+      </p>
     </div>
 
     <div v-if="gridData.length > 0" class="bobbins-section">
@@ -966,71 +711,18 @@ const yarnToRgba = (yarn: { hex: string }) => {
       <h3>Color Palette</h3>
       <div class="palette-grid">
         <div
-          v-for="(item, index) in colorPaletteWithNames"
+          v-for="item in colorPaletteWithNames"
           :id="`palette-${item.yarn.hex}`"
-          :key="index"
+          :key="item.color"
           class="palette-item"
         >
-          <div class="palette-swatch-split">
-            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-              <!-- Top-left triangle (PNG color) -->
-              <polygon points="0,0 100,0 0,100" :fill="item.color" />
-              <!-- Bottom-right triangle (Yarn color) -->
-              <polygon points="100,0 100,100 0,100" :fill="yarnToRgba(item.yarn)" />
-              <!-- Diagonal divider line -->
-              <line x1="100" y1="0" x2="0" y2="100" stroke="var(--vp-c-border)" stroke-width="2" />
-            </svg>
-            <div class="swatch-label swatch-label-tl">PNG</div>
-            <div class="swatch-label swatch-label-br">Yarn</div>
-          </div>
+          <div class="palette-swatch" :style="{ backgroundColor: item.yarn.hex }" />
           <div class="palette-info">
-            <div class="palette-name">{{ item.name }}</div>
-            <div class="palette-color">{{ item.hex }}</div>
+            <div class="palette-name">{{ item.yarn.name }}</div>
+            <div class="palette-color">{{ item.yarn.hex }}</div>
             <div class="palette-stitches">{{ item.stitches }} stitches</div>
             <div class="palette-stitches">{{ item.yardage }} yards</div>
           </div>
-          <button class="swap-btn" title="Swap yarn" @click="swapTarget = item.color">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="m16 3 4 4-4 4"></path>
-              <path d="M20 7H4"></path>
-              <path d="m8 21-4-4 4-4"></path>
-              <path d="M4 17h16"></path>
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="swapTarget !== null" class="settings-popup" @click.self="swapTarget = null">
-      <div class="settings-content swap-content">
-        <div class="settings-header">
-          <h3>Swap {{ yarnMapping.get(swapTarget)?.name }}</h3>
-          <button class="close-btn" @click="swapTarget = null">×</button>
-        </div>
-        <div class="settings-body">
-          <p v-if="swapCandidates.length === 0" class="setting-description">
-            Every yarn is already in the palette.
-          </p>
-          <button
-            v-for="yarn in swapCandidates"
-            :key="yarn.name"
-            class="swap-option"
-            @click="swapYarn(yarn)"
-          >
-            <span class="swap-option-swatch" :style="{ backgroundColor: yarn.hex }" />
-            <span class="palette-name">{{ yarn.name }}</span>
-            <span class="palette-color">{{ yarn.hex }}</span>
-          </button>
         </div>
       </div>
     </div>
@@ -1233,33 +925,6 @@ const yarnToRgba = (yarn: { hex: string }) => {
   margin-bottom: 0.5rem;
 }
 
-.setting-item-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-}
-
-.setting-item-header label {
-  margin-bottom: 0;
-}
-
-.setting-item .min-stitches-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--vp-c-text-2);
-  cursor: pointer;
-}
-
-.min-stitches-toggle input[type='checkbox'] {
-  width: 1rem;
-  height: 1rem;
-  cursor: pointer;
-}
-
 .setting-control {
   display: flex;
   gap: 0.75rem;
@@ -1290,63 +955,11 @@ const yarnToRgba = (yarn: { hex: string }) => {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--vp-c-brand-1) 25%, transparent);
 }
 
-.step-btn {
-  flex-shrink: 0;
-  width: 1.75rem;
-  height: 1.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--vp-c-bg-soft);
-  color: var(--vp-c-text-1);
-  border: 1px solid var(--vp-c-border);
-  border-radius: 0.375rem;
-  font-size: 1rem;
-  line-height: 1;
-  cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
-}
-
-.step-btn:hover:not(:disabled) {
-  background-color: var(--vp-c-bg-mute);
-  border-color: var(--vp-c-brand-1);
-}
-
-.step-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.color-preview-canvas {
-  display: block;
-  width: 100%;
-  height: auto;
-  margin-top: 0.75rem;
-  border: 1px solid var(--vp-c-border);
-  border-radius: 0.5rem;
-  background-color: var(--vp-c-bg-soft);
-  image-rendering: pixelated;
-  image-rendering: -moz-crisp-edges;
-  image-rendering: crisp-edges;
-}
-
 .setting-description {
   margin-top: 0.5rem;
   font-size: 0.75rem;
   color: var(--vp-c-text-2);
   line-height: 1.4;
-}
-
-.setting-stat {
-  margin-top: 0.5rem;
-  font-size: 0.875rem;
-  color: var(--vp-c-text-1);
-}
-
-.setting-stat strong {
-  font-family: var(--vp-font-family-mono);
 }
 
 .body-measurements {
@@ -1383,43 +996,6 @@ const yarnToRgba = (yarn: { hex: string }) => {
   font-family: var(--vp-font-family-mono);
   color: var(--vp-c-text-1);
   font-weight: 600;
-}
-
-.yarn-palette {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
-  gap: 0.5rem;
-  padding: 0.5rem;
-  background-color: var(--vp-c-bg-soft);
-  border: 1px solid var(--vp-c-border);
-  border-radius: 0.5rem;
-}
-
-.yarn-chip {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem;
-  background-color: var(--vp-c-bg);
-  border: 1px solid var(--vp-c-border);
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-}
-
-.yarn-chip-swatch {
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 0.25rem;
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  flex-shrink: 0;
-}
-
-.yarn-chip-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--vp-c-text-2);
-  font-size: 0.7rem;
 }
 
 .pattern-grid-container {
@@ -1713,45 +1289,6 @@ const yarnToRgba = (yarn: { hex: string }) => {
   background-color: var(--vp-c-bg-soft);
 }
 
-.palette-swatch-split {
-  width: 4rem;
-  height: 4rem;
-  border-radius: 0.375rem;
-  border: 1px solid var(--vp-c-border);
-  overflow: hidden;
-  flex-shrink: 0;
-  position: relative;
-}
-
-.palette-swatch-split svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.swatch-label {
-  position: absolute;
-  font-size: 0.625rem;
-  font-weight: 600;
-  color: white;
-  text-shadow:
-    -1px -1px 0 #000,
-    1px -1px 0 #000,
-    -1px 1px 0 #000,
-    1px 1px 0 #000;
-  pointer-events: none;
-}
-
-.swatch-label-tl {
-  top: 0.25rem;
-  left: 0.25rem;
-}
-
-.swatch-label-br {
-  bottom: 0.25rem;
-  right: 0.25rem;
-}
-
 .palette-info {
   display: flex;
   flex-direction: column;
@@ -1776,67 +1313,22 @@ const yarnToRgba = (yarn: { hex: string }) => {
   color: var(--vp-c-text-3);
 }
 
-.swap-btn {
-  margin-left: auto;
-  align-self: flex-start;
-  background: none;
-  border: none;
-  padding: 0.25rem;
-  border-radius: 0.25rem;
-  cursor: pointer;
-  color: var(--vp-c-text-3);
-  display: flex;
-  transition:
-    background-color 0.25s,
-    color 0.25s;
+.pattern-note {
+  margin: -0.5rem 0 1.25rem;
+  font-size: 0.875rem;
+  color: var(--vp-c-text-2);
 }
 
-.swap-btn:hover {
-  background-color: var(--vp-c-bg);
-  color: var(--vp-c-text-1);
-}
-
-.swap-content {
-  max-width: 360px;
-}
-
-.swap-option {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.5rem;
-  margin-bottom: 0.5rem;
-  border: 1px solid var(--vp-c-border);
-  border-radius: 0.5rem;
-  background-color: var(--vp-c-bg-soft);
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 0.25s;
-}
-
-.swap-option:last-child {
-  margin-bottom: 0;
-}
-
-.swap-option:hover {
-  border-color: var(--vp-c-brand-1);
-}
-
-.swap-option-swatch {
-  width: 2rem;
-  height: 2rem;
+.palette-swatch {
+  width: 4rem;
+  height: 4rem;
   border-radius: 0.375rem;
   border: 1px solid var(--vp-c-border);
   flex-shrink: 0;
 }
 
-.swap-option .palette-color {
-  margin-left: auto;
-}
-
 @media print {
-  .swap-btn {
+  .pattern-note {
     display: none;
   }
 }
