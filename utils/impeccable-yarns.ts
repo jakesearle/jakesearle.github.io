@@ -80,3 +80,51 @@ export const impeccableYarns: ImpeccableYarn[] = [
   { name: 'White', hex: '#ece7eb' },
   { name: 'White Smoke', hex: '#bbbfc3' },
 ];
+
+const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
+  const value = parseInt(hex.replace('#', ''), 16);
+  return { r: (value >> 16) & 0xff, g: (value >> 8) & 0xff, b: value & 0xff };
+};
+
+// Hue/saturation/lightness, only for sorting swatches into a rainbow.
+const hsl = (hex: string): { h: number; s: number; l: number } => {
+  const { r, g, b } = hexToRgb(hex);
+  const rr = r / 255;
+  const gg = g / 255;
+  const bb = b / 255;
+  const max = Math.max(rr, gg, bb);
+  const min = Math.min(rr, gg, bb);
+  const delta = max - min;
+  const l = (max + min) / 2;
+
+  if (delta === 0) return { h: 0, s: 0, l };
+
+  let h: number;
+  if (max === rr) h = ((gg - bb) / delta) % 6;
+  else if (max === gg) h = (bb - rr) / delta + 2;
+  else h = (rr - gg) / delta + 4;
+
+  return {
+    h: (h * 60 + 360) % 360,
+    s: delta / (1 - Math.abs(2 * l - 1)),
+    l,
+  };
+};
+
+// Near-neutral colors have a meaningless hue angle, so they'd scatter through
+// the rainbow at random. Group them together at the end instead, ordered
+// light to dark.
+const NEUTRAL_SATURATION = 0.15;
+
+// Orders yarns as a rainbow by hue, with near-neutrals grouped at the end
+// from light to dark. Returns a new array.
+export const sortYarnsByColor = (yarns: ImpeccableYarn[]): ImpeccableYarn[] =>
+  [...yarns].sort((a, b) => {
+    const ha = hsl(a.hex);
+    const hb = hsl(b.hex);
+    const aNeutral = ha.s < NEUTRAL_SATURATION;
+    const bNeutral = hb.s < NEUTRAL_SATURATION;
+    if (aNeutral !== bNeutral) return aNeutral ? 1 : -1;
+    if (aNeutral) return hb.l - ha.l;
+    return ha.h - hb.h || hb.l - ha.l;
+  });

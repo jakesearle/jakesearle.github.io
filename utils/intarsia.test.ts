@@ -3,7 +3,7 @@ import {
   type Grid,
   applyColorMapping,
   applyStitchEdits,
-  neighborColors,
+  replacementColors,
   singleStitches,
   bobbinStitchCounts,
   buildColorMappingForTargetCount,
@@ -15,6 +15,7 @@ import {
   gridFromImageData,
   hexToRgba,
   hungarianAlgorithm,
+  longestBobbinPerColor,
   maxBobbinsInRow,
   mergeColorGroups,
   readPatternMetadata,
@@ -25,7 +26,7 @@ import {
   rgbaToHex,
   sortColorsByFrequency,
 } from './intarsia';
-import { impeccableYarns } from './impeccable-yarns';
+import { impeccableYarns, sortYarnsByColor } from './impeccable-yarns';
 
 const RED = 'rgba(255,0,0,1)';
 const NEAR_RED = 'rgba(250,5,5,1)';
@@ -81,24 +82,31 @@ describe('color reduction', () => {
 });
 
 describe('single-stitch edits', () => {
-  it('finds stitches whose row run is one stitch long', () => {
-    expect(singleStitches(grid('AAB', 'ABA', '.A.'))).toEqual([
-      { x: 2, y: 0 },
-      { x: 0, y: 1 },
-      { x: 1, y: 1 },
-      { x: 2, y: 1 },
-      { x: 1, y: 2 },
-    ]);
+  it('finds stitches that are a whole color group on their own', () => {
+    expect(singleStitches(grid('AAB', 'AAA'))).toEqual([{ x: 2, y: 0 }]);
   });
 
-  it('lists distinct neighbor colors, nearest first', () => {
-    const g: Grid = [
-      [null, BLUE, null],
-      [NEAR_RED, RED, BLUE],
-      [null, RED, null],
-    ];
-    expect(neighborColors(g, { x: 1, y: 1 })).toEqual([NEAR_RED, BLUE]);
-    expect(neighborColors(g, { x: 0, y: 0 })).toEqual([]);
+  it('skips one-stitch runs that continue a bobbin from the row below', () => {
+    expect(singleStitches(grid('ABB', 'AAB'))).toEqual([]);
+  });
+
+  it('offers neighbor colors on either side, nearest first', () => {
+    const g: Grid = [[NEAR_RED, RED, BLUE]];
+    expect(replacementColors(g, { x: 1, y: 0 })).toEqual([NEAR_RED, BLUE]);
+  });
+
+  it('offers a diagonal color when the stitch would continue that bobbin', () => {
+    expect(replacementColors(grid('..B', 'AA.'), { x: 2, y: 0 })).toEqual([RED]);
+  });
+
+  it('skips a color whose bobbin is already continued elsewhere in the row', () => {
+    // The top row is worked left to right, so the left A claims the bobbin
+    // below first and a recolored stitch would start a new one-stitch bobbin.
+    expect(replacementColors(grid('A.B', 'AA.'), { x: 2, y: 0 })).toEqual([]);
+  });
+
+  it('offers nothing for an empty cell', () => {
+    expect(replacementColors(grid('.A'), { x: 0, y: 0 })).toEqual([]);
   });
 
   it('applies edits, skipping colors the grid no longer has', () => {
@@ -172,6 +180,23 @@ describe('bobbin groups', () => {
     const counts = bobbinStitchCounts(merged);
     expect(counts.get(1)).toEqual({ color: BLUE, count: 3 });
     expect(counts.get(2)).toEqual({ color: RED, count: 3 });
+  });
+});
+
+describe('longestBobbinPerColor', () => {
+  it('picks the bobbin with the most stitches for each color, lower id on ties', () => {
+    const counts = new Map([
+      [1, { color: RED, count: 4 }],
+      [2, { color: BLUE, count: 2 }],
+      [3, { color: RED, count: 9 }],
+      [4, { color: BLUE, count: 2 }],
+    ]);
+    expect(longestBobbinPerColor(counts)).toEqual(
+      new Map([
+        [RED, 3],
+        [BLUE, 2],
+      ])
+    );
   });
 });
 
@@ -257,5 +282,18 @@ describe('resolvePatternYarns', () => {
       yarns: { [aqua.hex]: 'Discontinued' },
     });
     expect(resolved.get(aquaPixel)).toBe(aqua);
+  });
+});
+
+describe('sortYarnsByColor', () => {
+  it('orders by hue with neutrals last, light to dark', () => {
+    const names = sortYarnsByColor([
+      { name: 'Black', hex: '#111111' },
+      { name: 'Blue', hex: '#0000ff' },
+      { name: 'White', hex: '#eeeeee' },
+      { name: 'Red', hex: '#ff0000' },
+      { name: 'Green', hex: '#00ff00' },
+    ]).map((y) => y.name);
+    expect(names).toEqual(['Red', 'Green', 'Blue', 'White', 'Black']);
   });
 });

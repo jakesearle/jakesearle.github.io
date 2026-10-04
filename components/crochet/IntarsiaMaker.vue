@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watchEffect } from 'vue';
 import { useRouter, withBase } from 'vitepress';
-import { impeccableYarns, type ImpeccableYarn } from '../../utils/impeccable-yarns';
+import {
+  impeccableYarns,
+  sortYarnsByColor,
+  type ImpeccableYarn,
+} from '../../utils/impeccable-yarns';
 import {
   DEFAULT_COLOR_THRESHOLD,
   applyColorMapping,
@@ -9,13 +13,15 @@ import {
   buildColorMapping,
   buildColorMappingForTargetCount,
   bytesToDataUrl,
+  dataUrlToBytes,
   filterSmallColorGroups,
   getYarnMappingWithOverrides,
   gridFromImageData,
   hexToRgb,
   loadTrackerState,
-  neighborColors,
+  replacementColors,
   oklabColorDistance,
+  readPatternMetadata,
   rgbaToHex,
   saveTrackerState,
   singleStitches,
@@ -187,7 +193,7 @@ const editTarget = ref<Stitch | null>(null);
 const editOptions = computed(() => {
   const target = editTarget.value;
   if (target === null) return [];
-  return neighborColors(gridData.value, target).map((color) => ({
+  return replacementColors(gridData.value, target).map((color) => ({
     color,
     yarn: yarnMapping.value.get(color) || { name: 'Unknown', hex: rgbaToHex(color) },
   }));
@@ -278,9 +284,15 @@ const gridDataWithYarnColors = computed(() => {
   );
 });
 
-// Pixels per stitch in the on-page preview. Drawn at this size (rather than
-// one pixel per stitch scaled up by CSS) so stitch outlines stay crisp.
-const PREVIEW_CELL_SIZE = 12;
+// Pixels per stitch in the on-page preview: enough that the pattern's longer
+// side is drawn at least PREVIEW_TARGET_SIZE px, so it stays sharp when CSS
+// stretches it to the page width, and outlines stay crisp.
+const PREVIEW_TARGET_SIZE = 1600;
+const previewCellSize = computed(() => {
+  const grid = gridData.value;
+  const longestSide = Math.max(grid.length, grid[0]?.length ?? 0, 1);
+  return Math.max(12, Math.ceil(PREVIEW_TARGET_SIZE / longestSide));
+});
 
 // Draws one cellSize-square per stitch. Empty (transparent) cells are left
 // unpainted.
@@ -335,10 +347,10 @@ watchEffect(() => {
   const canvasEl = previewCanvas.value;
   const grid = gridDataWithYarnColors.value;
   if (!canvasEl || grid.length === 0) return;
-  drawPattern(canvasEl, grid, PREVIEW_CELL_SIZE);
+  drawPattern(canvasEl, grid, previewCellSize.value);
   if (showSingleStitches.value) {
-    outlineStitches(canvasEl, singleStitchList.value, PREVIEW_CELL_SIZE, 'rgba(255,255,255,0.95)');
-    outlineStitches(canvasEl, activeEdits.value, PREVIEW_CELL_SIZE, '#facc15');
+    outlineStitches(canvasEl, singleStitchList.value, previewCellSize.value, '#facc15');
+    outlineStitches(canvasEl, activeEdits.value, previewCellSize.value, 'rgba(255,255,255,0.95)');
   }
 });
 
@@ -421,15 +433,26 @@ const colorPaletteWithNames = computed(() => {
     .sort((a, b) => b.stitches - a.stitches);
 });
 
+const yarnsByColor = sortYarnsByColor(impeccableYarns);
+
+// Colors actually in the pattern, after the Minimum Stitches filter and
+// stitch edits — can be lower than the number allowed.
+const actualColorCount = computed(() => colorPalette.value.length);
+
 const handleFileUpload = (event: Event) => {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
 
   if (!file) return;
+  // An .int.png has already had its colors squashed, so start it with every
+  // color allowed and no small-color filtering rather than merging it further.
+  let isIntPng = /\.int\.png$/i.test(file.name);
   sourceFileName.value = file.name.replace(/(\.int)?\.png$/i, '') || 'pattern';
 
   const reader = new FileReader();
   reader.onload = (e) => {
+    const dataUrl = e.target?.result as string;
+    isIntPng ||= readPatternMetadata(dataUrlToBytes(dataUrl)) !== null;
     const img = new Image();
     img.onload = () => {
       if (!canvas.value) return;
@@ -442,12 +465,13 @@ const handleFileUpload = (event: Event) => {
 
       ctx.drawImage(img, 0, 0);
       imageData.value = ctx.getImageData(0, 0, img.width, img.height);
-      targetColorCount.value = null;
+      targetColorCount.value = isIntPng ? maxColorCount.value : null;
+      minStitchFilterEnabled.value = !isIntPng;
       minStitchCountOverride.value = null;
       yarnOverrides.value = new Map();
       stitchEdits.value = new Map();
     };
-    img.src = e.target?.result as string;
+    img.src = dataUrl;
   };
   reader.readAsDataURL(file);
 };
@@ -483,13 +507,12 @@ const yarnToRgba = (yarn: { hex: string }) => {
 
     <canvas ref="canvas" style="display: none"></canvas>
 
-    <div v-if="gridData.length > 0" class="maker-layout">
+    <div v-if="gridData.length > 0">
       <div class="preview-pane">
         <canvas
           ref="previewCanvas"
           class="pattern-preview"
           :class="{ 'pattern-preview-editing': showSingleStitches }"
-          :style="{ maxWidth: `${gridData[0].length * PREVIEW_CELL_SIZE}px` }"
           @click="handlePreviewClick"
         ></canvas>
       </div>
@@ -534,6 +557,9 @@ const yarnToRgba = (yarn: { hex: string }) => {
             Target number of colors in the pattern. Similar colors in the source image are merged
             together to reach this count — the Minimum Stitches filter below can then remove a few
             more, so the final count may end up slightly lower.
+          </p>
+          <p class="setting-stat">
+            {{ effectiveTargetColorCount }} colors allowed · {{ actualColorCount }} actually used
           </p>
         </div>
         <div class="setting-item">
@@ -603,9 +629,9 @@ const yarnToRgba = (yarn: { hex: string }) => {
             </label>
           </div>
           <p class="setting-description">
-            Stitches that are the only one of their color in their row. Highlight them (white
-            rings), then click one to recolor it to a neighboring color. Edited stitches get yellow
-            rings; click one again to undo.
+            Color groups (bobbins) that are just one stitch. Highlight them (yellow rings), then
+            click one to recolor it to a neighboring color. Edited stitches get white rings; click
+            one again to undo.
           </p>
           <p class="setting-stat">
             {{ singleStitchList.length }} single stitch{{
@@ -671,7 +697,7 @@ const yarnToRgba = (yarn: { hex: string }) => {
     <details v-if="gridData.length > 0" class="yarns-details">
       <summary>Available yarn colors ({{ impeccableYarns.length }})</summary>
       <div class="yarn-palette">
-        <div v-for="yarn in impeccableYarns" :key="yarn.name" class="yarn-chip" :title="yarn.name">
+        <div v-for="yarn in yarnsByColor" :key="yarn.name" class="yarn-chip" :title="yarn.name">
           <div class="yarn-chip-swatch" :style="{ backgroundColor: yarn.hex }" />
           <span class="yarn-chip-name">{{ yarn.name }}</span>
         </div>
@@ -686,7 +712,7 @@ const yarnToRgba = (yarn: { hex: string }) => {
         </div>
         <div class="settings-body">
           <p v-if="editOptions.length === 0 && !editTargetIsEdited" class="setting-description">
-            Every neighbor is already this color.
+            No neighboring color would join this stitch to a larger color group.
           </p>
           <button
             v-for="option in editOptions"
@@ -1183,19 +1209,6 @@ const yarnToRgba = (yarn: { hex: string }) => {
   }
 }
 
-.maker-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 20rem;
-  gap: 1.5rem;
-  align-items: start;
-}
-
-@media (max-width: 768px) {
-  .maker-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 .preview-pane {
   display: flex;
   justify-content: center;
@@ -1207,8 +1220,8 @@ const yarnToRgba = (yarn: { hex: string }) => {
 
 .pattern-preview {
   display: block;
-  width: 100%;
-  height: auto;
+  max-width: 100%;
+  max-height: 80vh;
 }
 
 .pattern-preview-editing {
@@ -1229,13 +1242,17 @@ const yarnToRgba = (yarn: { hex: string }) => {
 }
 
 .maker-settings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.maker-settings .setting-item {
+  margin-bottom: 0;
   padding: 1.25rem;
   border: 1px solid var(--vp-c-border);
   border-radius: 0.75rem;
-}
-
-.maker-settings .setting-item:last-child {
-  margin-bottom: 0;
 }
 
 .yarns-details {

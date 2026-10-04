@@ -295,30 +295,48 @@ export interface Stitch {
 
 export const stitchKey = ({ x, y }: Stitch) => `${x},${y}`;
 
-// Stitches whose color run in their row is one stitch long — each needs its
-// own bobbin change for a single stitch, so they're worth a second look.
+// Stitches that make up a whole color group (bobbin) on their own — each
+// needs its own bobbin for a single stitch, so they're worth a second look.
 export const singleStitches = (grid: Grid): Stitch[] => {
+  const merged = mergeColorGroups(computeColorGroups(grid));
+  const counts = bobbinStitchCounts(merged);
   const result: Stitch[] = [];
-  grid.forEach((row, y) => {
-    row.forEach((color, x) => {
-      if (color !== null && row[x - 1] !== color && row[x + 1] !== color) {
-        result.push({ x, y });
+  merged.forEach((row, y) => {
+    for (const group of row) {
+      if (group.color !== null && counts.get(group.mergedGroupId)?.count === 1) {
+        result.push({ x: group.startIndex, y });
       }
-    });
+    }
   });
   return result;
 };
 
-// The distinct colors of a stitch's four neighbors, other than its own,
-// nearest to its own color first.
-export const neighborColors = (grid: Grid, { x, y }: Stitch): string[] => {
+// Colors a stitch could be recolored to: those of its eight neighbors that,
+// once applied, leave the pattern with fewer single stitches. Whether a
+// recolor above or below actually joins a bobbin depends on the merge rules
+// (see mergeColorGroups), so each candidate is tried rather than predicted.
+// Nearest to the stitch's own color first.
+export const replacementColors = (grid: Grid, { x, y }: Stitch): string[] => {
   const own = grid[y]?.[x];
   if (own == null) return [];
-  const neighbors = [grid[y]?.[x - 1], grid[y]?.[x + 1], grid[y - 1]?.[x], grid[y + 1]?.[x]];
-  const distinct = new Set(
-    neighbors.filter((color): color is string => color != null && color !== own)
-  );
-  return [...distinct].sort((a, b) => colorDistance(own, a) - colorDistance(own, b));
+
+  const candidates = new Set<string>();
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const color = grid[y + dy]?.[x + dx];
+      if (color != null && color !== own) candidates.add(color);
+    }
+  }
+
+  const singlesBefore = singleStitches(grid).length;
+  return [...candidates]
+    .filter((color) => {
+      const edited = grid.map((row, rowIndex) =>
+        rowIndex === y ? row.map((c, colIndex) => (colIndex === x ? color : c)) : row
+      );
+      return singleStitches(edited).length < singlesBefore;
+    })
+    .sort((a, b) => colorDistance(own, a) - colorDistance(own, b));
 };
 
 // Recolors individual stitches (edits keyed by stitchKey). Edits to a color
@@ -585,6 +603,20 @@ export const bobbinStitchCounts = (
   }
 
   return counts;
+};
+
+// The bobbin with the most stitches for each color, keyed by color. That one
+// can be worked straight from the skein instead of wound. Ties go to the
+// lower bobbin id.
+export const longestBobbinPerColor = (
+  counts: Map<number, { color: string; count: number }>
+): Map<string, number> => {
+  const longest = new Map<string, { id: number; count: number }>();
+  for (const [id, { color, count }] of [...counts].sort(([a], [b]) => a - b)) {
+    const best = longest.get(color);
+    if (!best || count > best.count) longest.set(color, { id, count });
+  }
+  return new Map(Array.from(longest, ([color, { id }]) => [color, id]));
 };
 
 export const maxBobbinsInRow = (mergedGroups: ColorGroup[][]): number => {

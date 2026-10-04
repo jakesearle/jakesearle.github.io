@@ -10,6 +10,7 @@ import {
   dataUrlToBytes,
   gridFromImageData,
   loadTrackerState,
+  longestBobbinPerColor,
   maxBobbinsInRow as countMaxBobbinsInRow,
   mergeColorGroups,
   readPatternMetadata,
@@ -316,6 +317,13 @@ const bobbinInfo = computed(() => {
     })
     .sort((a, b) => a.id - b.id);
 });
+
+// Each color's longest bobbin, by pattern color — worked from the skein.
+const skeinBobbins = computed(() =>
+  longestBobbinPerColor(bobbinStitchCounts(mergedColorGroups.value))
+);
+
+const skeinBobbinIds = computed(() => new Set(skeinBobbins.value.values()));
 
 const sortedBobbinInfo = computed(() => {
   return [...bobbinInfo.value].sort((a, b) => {
@@ -691,8 +699,17 @@ const printPage = () => {
           />
           <div class="bobbin-id" :style="{ backgroundColor: bobbin.color }">#{{ bobbin.id }}</div>
           <div class="bobbin-details">
-            <div class="bobbin-name bobbin-name-link" @click="scrollToColor(bobbin.color)">
-              {{ bobbin.name }}
+            <div class="bobbin-name-row">
+              <div class="bobbin-name bobbin-name-link" @click="scrollToColor(bobbin.color)">
+                {{ bobbin.name }}
+              </div>
+              <span
+                v-if="skeinBobbinIds.has(bobbin.id)"
+                class="skein-badge"
+                title="Longest bobbin of this color: work it straight from the skein"
+              >
+                Skein
+              </span>
             </div>
             <div class="bobbin-body-measurements">
               {{ bobbin.bodyMeasurements }}
@@ -722,6 +739,12 @@ const printPage = () => {
             <div class="palette-color">{{ item.yarn.hex }}</div>
             <div class="palette-stitches">{{ item.stitches }} stitches</div>
             <div class="palette-stitches">{{ item.yardage }} yards</div>
+            <div v-if="skeinBobbins.has(item.color)" class="palette-stitches">
+              Pull from skein:
+              <span class="skein-link" @click="scrollToBobbin(skeinBobbins.get(item.color) || 0)">
+                #{{ skeinBobbins.get(item.color) }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -1216,6 +1239,31 @@ const printPage = () => {
   gap: 0.375rem;
   flex: 1;
   justify-content: center;
+}
+
+.bobbin-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.skein-badge {
+  padding: 0.0625rem 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--vp-c-brand-1);
+  border: 1px solid var(--vp-c-brand-1);
+  border-radius: 0.625rem;
+  white-space: nowrap;
+}
+
+.skein-link {
+  color: var(--vp-c-brand-1);
+  cursor: pointer;
+}
+
+.skein-link:hover {
+  text-decoration: underline;
 }
 
 .bobbin-name {
