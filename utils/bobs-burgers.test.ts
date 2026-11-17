@@ -249,5 +249,19 @@ describe('generated watchlist.json', () => {
     expect(titleOf('Mutiny on the Windbreaker', 'The Love Boat')?.type).toBe('tv'); // global type
     expect(titleOf('Sheesh! Cab, Bob?', 'Plump Friction')).toBeUndefined(); // ignore
     expect(titleOf('The Belchies', '127 Hours')?.context).toMatch(/IMDb Connections/); // add
+    expect(titleOf('Hamburger Dinner Theater', 'The Pirates of Penzance')).toMatchObject({
+      type: 'movie',
+      year: '1983',
+      adaptedFrom: 'stage',
+    }); // add with adapted_from, replacing the removed bare stage title
+    expect(titleOf('Hamburger Dinner Theater', 'Pirates of Penzance')).toBeUndefined();
+  });
+
+  it('only uses known adaptedFrom values', () => {
+    for (const e of eps) {
+      for (const t of e.titles) {
+        if (t.adaptedFrom !== undefined) expect(['stage', 'book']).toContain(t.adaptedFrom);
+      }
+    }
   });
 });

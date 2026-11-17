@@ -8,27 +8,44 @@
 # ── Types, everywhere a title appears ─────────────────────────────────────────────────────────
 # movies / tv: show the title, labelled as that type.
 # ignore:      never show it (in-show parody names, songs, games, people…).
+#
+# Stage shows and books: add a well-known screen adaptation with adapted_from and a note when
+# there is one (see [S01E05]), otherwise ignore the reference.
 
 movies = [
   "The Shining",
+  "Sixteen Candles",   # S01E06, S11E04
+  "Sabata",            # S01E09: 1969 spaghetti western
 ]
 
 tv = [
   "Malcolm in the Middle",
   "The Love Boat",
+  "Family Guy",        # S01E03
 ]
 
 ignore = [
-  "Plump Friction",   # S01E06: a made-up title on the porn theater's marquee
+  "Plump Friction",             # S01E06: a made-up title on the porn theater's marquee
+  "Dong Day Afternoon",         # S01E06: same marquee (Dog Day Afternoon stays)
+  "Pink Elephants On Parade",   # S01E08: a song/segment from Dumbo, which is listed itself
+  "Family Gay",                 # S01E03: an episode of Family Guy, which is listed itself
 ]
 
 # ── Per-episode fixes ─────────────────────────────────────────────────────────────────────────
 # [SxxExx]
-# add            = [{ title = "…", type = "movie" | "tv", year = 1984, must_watch = true, note = "…" }]
-#                  (type defaults to "movie"; note replaces the "Added by hand." caption)
+# add            = [{ title = "…", type = "movie" | "tv", year = 1984, must_watch = true, note = "…",
+#                     adapted_from = "stage" | "book" }]
+#                  (type defaults to "movie"; note replaces the "Added by hand." caption;
+#                   adapted_from labels a screen adaptation of the work the episode references)
 # remove         = ["…"]   drop a title from this episode only
 # must_watch     = ["…"]   flag as must-watch
 # not_must_watch = ["…"]   unflag
+
+[S01E05]  # Hamburger Dinner Theater
+remove = ["Pirates of Penzance"]
+add = [
+  { title = "The Pirates of Penzance", year = 1983, adapted_from = "stage", note = "Linda's dinner theater show, Pirates of Panache, parodies Gilbert and Sullivan's stage operetta. The 1983 film adaptation is the easiest way to see it." },
+]
 
 [S02E01]  # The Belchies — dialogue references from IMDb's Connections page that the wiki skips
 add = [

@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import data from '../../tv/bobs-burgers/watchlist.json';
 import {
+  ADAPTED_FROM_LABEL,
   episodeCode,
   filterEpisodes,
   groupMaybes,
@@ -197,6 +198,7 @@ const heuristicsNote =
               <a v-if="t.tmdb" :href="t.tmdb" target="_blank" rel="noopener">{{ t.title }}</a>
               <template v-else>{{ t.title }}</template>
               <span v-if="t.year" class="muted">({{ t.year }})</span>
+              <span v-if="t.adaptedFrom" class="tag">{{ ADAPTED_FROM_LABEL[t.adaptedFrom] }}</span>
               <span v-if="t.major" class="badge">must-watch</span>
               <a
                 class="watch"

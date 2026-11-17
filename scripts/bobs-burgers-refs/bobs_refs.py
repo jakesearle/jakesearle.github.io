@@ -32,6 +32,8 @@ REFS = CACHE / "refs.json"
 REPO = ROOT.parents[1]
 OUT_JSON = REPO / "tv" / "bobs-burgers" / "watchlist.json"
 OVERRIDES = ROOT / "overrides.toml"
+# What an added title adapts, when the episode references the original rather than the screen version
+ADAPTED_FROM = ("stage", "book")
 
 # Episodes where the wiki links the wrong IMDb title (checked by hand on imdb.com)
 IMDB_OVERRIDES = {
@@ -471,10 +473,17 @@ def cmd_export():
             if kind not in ("movie", "tv"):
                 misses.append(f"[{code}] add {a.get('title')!r}: type must be \"movie\" or \"tv\"")
                 continue
+            adapted = a.get("adapted_from")
+            if adapted not in (None, *ADAPTED_FROM):
+                misses.append(f"[{code}] add {a.get('title')!r}: adapted_from must be one of "
+                              + ", ".join(f'"{x}"' for x in ADAPTED_FROM))
+                adapted = None
             put({
                 "key": simple(a["title"]), "title": a["title"], "type": kind,
                 "year": str(a.get("year", "")), "poster": "", "tmdb": "",
                 "context": a.get("note", "Added by hand."),
+                # only written when set, to keep the JSON small
+                **({"adaptedFrom": adapted} if adapted else {}),
             }, bool(a.get("must_watch")))
 
         present = {simple(t["title"]) for t in titles.values()} | {simple(m["title"]) for m in maybes}

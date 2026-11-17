@@ -13,7 +13,17 @@ export interface WatchlistTitle {
   tmdb: string;
   major: boolean; // the episode's title/plot is built on this title
   context: string; // the wiki trivia line that mentions it, or a hand-written note
+  // Set when this is a screen adaptation of the work the episode actually
+  // references (e.g. the 1983 Pirates of Penzance film for the operetta).
+  adaptedFrom?: AdaptedFrom;
 }
+
+export type AdaptedFrom = 'stage' | 'book';
+
+export const ADAPTED_FROM_LABEL: Record<AdaptedFrom, string> = {
+  stage: 'From the stage',
+  book: 'From the book',
+};
 
 export interface WatchlistEpisode {
   title: string;

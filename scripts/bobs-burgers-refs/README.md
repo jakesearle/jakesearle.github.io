@@ -27,6 +27,8 @@ Overrides beat both the keyword guesses and TMDB.
   aren't real movies or shows, such as parody names made up for the episode.
 - `[S01E02]` tables: `add`, `remove`, `must_watch`, `not_must_watch` for a single episode. `add`
   is useful for references the wiki misses but IMDb's Connections page lists.
+- Stage shows and books: `add` a well-known screen adaptation with `adapted_from = "stage"` (or
+  `"book"`) and a note, which shows a "From the stage" label on the page; otherwise `ignore` it.
 
 The file's header comment documents every field. Export prints a warning for any entry that didn't
 match anything, so typos and entries that no longer match the wiki don't fail silently.
