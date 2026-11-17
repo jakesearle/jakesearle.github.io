@@ -1,0 +1,38 @@
+# Hand corrections for the Bob's Burgers watchlist.
+#
+# Applied by `python3 bobs_refs.py export`; they beat both the keyword guesses and TMDB.
+# After editing:   python3 scripts/bobs-burgers-refs/bobs_refs.py export
+# Titles are matched loosely (case, spaces and punctuation are ignored). Export prints a warning for
+# any entry that didn't match anything, so typos don't fail silently.
+
+# ── Types, everywhere a title appears ─────────────────────────────────────────────────────────
+# movies / tv: show the title, labelled as that type.
+# ignore:      never show it (in-show parody names, songs, games, people…).
+
+movies = [
+  "The Shining",
+]
+
+tv = [
+  "Malcolm in the Middle",
+  "The Love Boat",
+]
+
+ignore = [
+  "Plump Friction",   # S01E06: a made-up title on the porn theater's marquee
+]
+
+# ── Per-episode fixes ─────────────────────────────────────────────────────────────────────────
+# [SxxExx]
+# add            = [{ title = "…", type = "movie" | "tv", year = 1984, must_watch = true, note = "…" }]
+#                  (type defaults to "movie"; note replaces the "Added by hand." caption)
+# remove         = ["…"]   drop a title from this episode only
+# must_watch     = ["…"]   flag as must-watch
+# not_must_watch = ["…"]   unflag
+
+[S02E01]  # The Belchies — dialogue references from IMDb's Connections page that the wiki skips
+add = [
+  { title = "Footloose", year = 1984, note = "Mentioned in dialogue (from IMDb Connections)." },
+  { title = "The Godfather Part III", year = 1990, note = "Quoted in dialogue (from IMDb Connections)." },
+  { title = "127 Hours", year = 2010, note = "Louise says she doesn't need to cut off her arm like the guy in this movie (from IMDb Connections)." },
+]

@@ -4,3 +4,4 @@
 - [Nonogram Solver](/puzzle/nonogram/)
 - [Nonogram Line Checker](/puzzle/nonogram-line/)
 - [Dog Walk Calendar](/pets/walk-calendar/)
+- [Bob's Burgers Watchlist](/tv/bobs-burgers/) - Movies and TV shows referenced in each episode
