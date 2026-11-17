@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from import_imdb import entry_line, episode_code, insert, parse, split_batch  # noqa: E402
+from import_imdb import entry_line, episode_code, insert, parse, sentence, split_batch  # noqa: E402
 
 # How a copy from the IMDb page arrived in chat: markdown links, blank bullets between entries
 MARKDOWN_PASTE = """\
@@ -126,6 +126,14 @@ class EntryLineTests(unittest.TestCase):
     def test_note_is_capitalised_sentence(self):
         e = parse("References\nFootloose (1984)\nmentioned in dialogue\n")[0]
         self.assertIn('note = "Mentioned in dialogue. (from IMDb Connections)"', entry_line(e))
+
+    def test_sentence_punctuation(self):
+        self.assertEqual(sentence("mentioned in dialogue"), "Mentioned in dialogue.")
+        self.assertEqual(sentence('"Serpentine!"'), '"Serpentine!"')
+        self.assertEqual(sentence('"Pasta la vista, baby"'), '"Pasta la vista, baby"')
+        self.assertEqual(sentence("Gene claims to play it on the triangle."), "Gene claims to play it on the triangle.")
+        self.assertEqual(sentence('Linda says it\'s like "West Side Story"'), 'Linda says it\'s like "West Side Story".')
+        self.assertEqual(sentence(""), "")
 
     def test_spoof_without_description(self):
         e = parse("Spoofs\nThe Goonies (1985)\n")[0]

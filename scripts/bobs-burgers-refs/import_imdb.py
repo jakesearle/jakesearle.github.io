@@ -116,10 +116,26 @@ def toml_str(s):
     return json.dumps(s, ensure_ascii=False)
 
 
+def sentence(text):
+    """IMDb notes as a sentence: capitalised, ending in punctuation, without doubling it.
+
+    'mentioned in dialogue' -> 'Mentioned in dialogue.'   '"Serpentine!"' stays as it is.
+    """
+    d = text.strip()
+    if not d:
+        return ""
+    d = d[0].upper() + d[1:]
+    # already ends a sentence, possibly inside closing quotes/brackets: "…!"  "…?"  …)
+    if re.search(r"[.!?…][\"'”’)\]]*$", d):
+        return d
+    # a quote that ends without punctuation ("Pasta la vista, baby") is complete as it is
+    if re.search(r"[\"”]$", d) and d[0] in "\"“":
+        return d
+    return d + "."
+
+
 def entry_line(e):
-    d = e.description.strip().rstrip(".")
-    # IMDb notes are often lowercase fragments ("mentioned in dialogue")
-    note = d[:1].upper() + d[1:] + "." if d else ("Spoofed" if e.section == "spoofs" else "Referenced")
+    note = sentence(e.description) or ("Spoofed" if e.section == "spoofs" else "Referenced")
     note += " (from IMDb Connections)"
     parts = [f"title = {toml_str(e.title)}"]
     if e.kind == "tv":
