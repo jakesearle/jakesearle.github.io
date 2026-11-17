@@ -41,6 +41,15 @@ ignore = [
 # must_watch     = ["…"]   flag as must-watch
 # not_must_watch = ["…"]   unflag
 
+[S01E02]  # Crawl Space — from IMDb's Connections page (The Shining is already listed from the wiki)
+add = [
+  { title = "Night of the Living Dead", year = 1968, note = "Tina says this movie still gives her nightmares from watching it when she was eight (from IMDb Connections)." },
+  { title = "Star Wars: Episode IV - A New Hope", year = 1977, note = "Chewbacca gets a mention (from IMDb Connections)." },
+  { title = "Ghost Dad", year = 1990, note = "A girl at Louise's séance asks Bob if he's the ghost from Ghost Dad (from IMDb Connections)." },
+  { title = "Ghost", year = 1990, note = "A girl at Louise's séance asks Bob if he's the ghost from Ghost (from IMDb Connections)." },
+  { title = "Coyote Ugly", year = 2000, note = "Tina calls the women on the cover of Al's magazine \"the girls of Coyote Ugly\" (from IMDb Connections)." },
+]
+
 [S01E05]  # Hamburger Dinner Theater
 remove = ["Pirates of Penzance"]
 add = [

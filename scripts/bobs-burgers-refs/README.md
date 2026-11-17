@@ -33,6 +33,26 @@ Overrides beat both the keyword guesses and TMDB.
 The file's header comment documents every field. Export prints a warning for any entry that didn't
 match anything, so typos and entries that no longer match the wiki don't fail silently.
 
+## Importing from IMDb Connections
+
+The wiki misses many references that an episode's IMDb Connections page lists
+(`imdb.com/title/tt…/movieconnections/`; each episode on the site links to it). To add them, copy
+the page's References / Spoofs / Features entries and pipe them in:
+
+```sh
+pbpaste | python3 scripts/bobs-burgers-refs/import_imdb.py S1E3 --dry-run   # preview
+pbpaste | python3 scripts/bobs-burgers-refs/import_imdb.py S1E3             # add + re-export
+```
+
+It appends `add` entries to that episode's section in `overrides.toml` (creating it in episode
+order if needed), then re-exports. Titles the episode already lists, titles in `ignore` or that
+episode's `remove`, video games and music videos are skipped; TV series get `type = "tv"`. If the
+paste includes section headings, "Featured in", "Referenced in" and similar sections are dropped,
+since they list other works that mention the episode. IMDb's description becomes the note, so
+reword it in `overrides.toml` if you'd rather not publish IMDb's text as-is.
+
+Tests: `python3 -m unittest scripts/bobs-burgers-refs/test_import_imdb.py`
+
 ## TMDB (optional, recommended)
 
 Without TMDB, the type is a keyword guess. With a free

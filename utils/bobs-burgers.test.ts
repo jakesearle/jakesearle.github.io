@@ -72,8 +72,8 @@ const names = (eps: WatchlistEpisode[]) => eps.map((e) => e.title);
 const keys = (e: WatchlistEpisode) => e.titles.map((t) => t.key);
 
 describe('episodeCode', () => {
-  it('zero-pads season and episode', () => {
-    expect(episodeCode({ season: 2, number: 1 })).toBe('S02E01');
+  it('formats season and episode without zero-padding', () => {
+    expect(episodeCode({ season: 2, number: 1 })).toBe('S2E1');
     expect(episodeCode({ season: 12, number: 22 })).toBe('S12E22');
   });
 });

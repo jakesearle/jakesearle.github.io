@@ -58,9 +58,9 @@ export interface WatchlistFilter {
 
 export type SeenSet = Record<string, true>;
 
+// Display code like "S1E1". (overrides.toml keys stay zero-padded, "[S01E01]".)
 export function episodeCode(ep: Pick<WatchlistEpisode, 'season' | 'number'>): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `S${pad(ep.season)}E${pad(ep.number)}`;
+  return `S${ep.season}E${ep.number}`;
 }
 
 // JustWatch search for a title, which lists where it's streaming, renting or
