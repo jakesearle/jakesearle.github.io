@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
-"""Turn a pasted IMDb "Connections" list into overrides.toml entries for one episode.
+"""Turn IMDb "Connections" lists into overrides.toml entries.
 
-Copy the References / Spoofs / Features sections from an episode's IMDb Connections page
-(imdb.com/title/tt…/movieconnections/), then:
+Easiest: the "Copy for watchlist" bookmarklet (open bookmarklet.html to install it). Click it on
+each episode's IMDb Connections page, then import everything you collected in one go; each page
+is tagged with its IMDb id, so the episode is worked out for you:
 
-    pbpaste | python3 scripts/bobs-burgers-refs/import_imdb.py S1E3            # add + re-export
-    pbpaste | python3 scripts/bobs-burgers-refs/import_imdb.py S1E3 --dry-run  # just show it
+    pbpaste | python3 scripts/bobs-burgers-refs/import_imdb.py            # add + re-export
+    pbpaste | python3 scripts/bobs-burgers-refs/import_imdb.py --dry-run  # just show it
+
+Or paste one episode's list by hand (copied from imdb.com/title/tt…/movieconnections/) and name
+the episode:
+
+    pbpaste | python3 scripts/bobs-burgers-refs/import_imdb.py S1E3
 
 Titles the episode already lists are skipped, as are video games, music videos and anything in
-overrides.toml's `ignore` list. TV series are added with type = "tv". If the paste includes the
+overrides.toml's `ignore` list. TV series are added with type = "tv". If the text includes the
 section headings, only References, Spoofs and Features are used ("Featured in", "Referenced in"
 and the like point the other way: other works that mention this episode).
 """
@@ -29,8 +35,12 @@ DROP_SECTIONS = {"featured in", "referenced in", "spoofed in", "edited into", "f
                  "followed by", "version of", "remade as", "remake of", "spin-off from",
                  "spin-off", "alternate language version of", "references (in)"}
 # Page chrome that shows up when copying a whole page
-NOISE = re.compile(r"^(edit|jump to|contribute to this page|suggest an edit.*|learn more.*|"
-                   r"edit page|back|connections|more from this title|more to explore)$", re.I)
+NOISE = re.compile(r"^(edit|jump to|suggest an edit.*|learn more.*|edit page|back|connections|"
+                   r"cast & crew|user reviews|trivia|imdbpro|all topics)$", re.I)
+# The Connections list ends where the page footer starts; ignore everything after it
+END = re.compile(r"^(contribute to this page|more from this title|more to explore)$", re.I)
+# How the bookmarklet tags each page it copies
+BATCH_MARKER = re.compile(r"^=== IMDb (tt\d+) ===[ \t]*$", re.M)
 
 # "[Title](https://www.imdb.com/title/tt123/…) (1968)"  or  "Title (TV Series 1999–)"
 ENTRY = re.compile(
@@ -58,6 +68,8 @@ def parse(text):
     for raw in text.splitlines():
         line = re.sub(r"^\s*(?:[*\-•]|\d+\.)\s*", "", raw).strip()   # bullets
         line = re.sub(r"^#+\s*", "", line)                            # markdown headings
+        if END.match(line):
+            break
         if not line or NOISE.match(line):
             continue
         heading = re.sub(r"\s*\(\d+\)$", "", line).strip().lower()    # "References (3)"
@@ -89,6 +101,14 @@ def episode_code(arg):
     if not m:
         sys.exit(f"episode should look like S1E3 or S01E03, not {arg!r}")
     return int(m[1]), int(m[2])
+
+
+def split_batch(text):
+    """Bookmarklet output -> [(imdb_id, page_text)], or None if the text has no markers."""
+    parts = BATCH_MARKER.split(text)
+    if len(parts) == 1:
+        return None
+    return list(zip(parts[1::2], parts[2::2]))
 
 
 def toml_str(s):
@@ -140,31 +160,13 @@ def insert(toml_text, code, ep_title, lines):
     return "\n".join(rows)
 
 
-def main(argv):
-    args = [a for a in argv if not a.startswith("--")]
-    dry = "--dry-run" in argv
-    if len(args) != 1:
-        sys.exit(__doc__)
-    season, number = episode_code(args[0])
-    code = f"S{season:02}E{number:02}"
-
-    # export first so "already listed" reflects the current overrides
-    with contextlib.redirect_stdout(io.StringIO()):
-        br.cmd_export()
-    data = json.loads(br.OUT_JSON.read_text())
-    ep = next((e for e in data["episodes"] if (e["season"], e["number"]) == (season, number)), None)
-    if not ep:
-        sys.exit(f"S{season}E{number} isn't in the watchlist data")
+def plan_episode(ep, text, raw):
+    """Decide what to add for one episode. Returns (entry lines, report lines)."""
+    code = f"S{ep['season']:02}E{ep['number']:02}"
     listed = {br.simple(t["title"]) for t in ep["titles"]}
-    raw = tomllib.loads(br.OVERRIDES.read_text())
     ignored = {br.simple(t) for t in raw.get("ignore", [])}
     removed = {br.simple(t) for t in raw.get(code, {}).get("remove", [])}
-
-    text = sys.stdin.read()
     entries = parse(text)
-    if not entries:
-        sys.exit("found no titles in the paste — expected lines like 'Night of the Living Dead (1968)'")
-
     new, report = [], []
     for e in entries:
         k = br.simple(e.title)
@@ -178,24 +180,69 @@ def main(argv):
             listed.add(k)
             new.append(e)
             report.append(f"  add   {e.title}" + (" (TV)" if e.kind == "tv" else f" ({e.year})"))
+    head = f"S{ep['season']}E{ep['number']} {ep['title']}: "
+    head += f"{len(new)} to add, {len(entries) - len(new)} skipped" if entries else "no titles found"
+    return [entry_line(e) for e in new], [head, *report]
 
-    print(f"S{season}E{number} {ep['title']}: {len(new)} to add, {len(entries) - len(new)} skipped")
-    print("\n".join(report))
-    if not new:
+
+def main(argv):
+    args = [a for a in argv if not a.startswith("--")]
+    dry = "--dry-run" in argv
+    if len(args) > 1:
+        sys.exit(__doc__)
+
+    # export first so "already listed" reflects the current overrides
+    with contextlib.redirect_stdout(io.StringIO()):
+        br.cmd_export()
+    episodes = json.loads(br.OUT_JSON.read_text())["episodes"]
+    raw = tomllib.loads(br.OVERRIDES.read_text())
+
+    text = sys.stdin.read()
+    batch = split_batch(text)
+    jobs = []  # (episode, page text)
+    if args:
+        season, number = episode_code(args[0])
+        ep = next((e for e in episodes if (e["season"], e["number"]) == (season, number)), None)
+        if not ep:
+            sys.exit(f"S{season}E{number} isn't in the watchlist data")
+        if batch and len(batch) > 1:
+            sys.exit("that's several copied pages; leave off the episode and they'll be matched by IMDb id")
+        jobs.append((ep, batch[0][1] if batch else text))
+    elif batch:
+        by_imdb = {e["imdb"]: e for e in episodes if e["imdb"]}
+        for imdb_id, page in batch:
+            ep = by_imdb.get(imdb_id)
+            if ep:
+                jobs.append((ep, page))
+            else:
+                print(f"{imdb_id}: not a Bob's Burgers episode in the watchlist data, skipping")
+    else:
+        sys.exit("name the episode (e.g. S1E3), or use text copied with the bookmarklet\n\n" + __doc__)
+
+    planned = []
+    for ep, page in jobs:
+        lines, report = plan_episode(ep, page, raw)
+        print("\n".join(report))
+        if lines:
+            planned.append((ep, lines))
+    if not planned:
+        print("\nnothing new to add")
         return
-    lines = [entry_line(e) for e in new]
     if dry:
-        print("\n(dry run) would add to [" + code + "]:\n" + "\n".join(lines))
+        for ep, lines in planned:
+            print(f"\n(dry run) would add to [S{ep['season']:02}E{ep['number']:02}]:\n" + "\n".join(lines))
         return
 
-    before = br.OVERRIDES.read_text()
-    after = insert(before, code, ep["title"], lines)
+    after = br.OVERRIDES.read_text()
+    for ep, lines in planned:
+        after = insert(after, f"S{ep['season']:02}E{ep['number']:02}", ep["title"], lines)
     try:
         tomllib.loads(after)
     except tomllib.TOMLDecodeError as err:
         sys.exit(f"not writing: the result wouldn't be valid TOML ({err})")
     br.OVERRIDES.write_text(after)
-    print(f"\nupdated {br.OVERRIDES.name}")
+    total = sum(len(lines) for _, lines in planned)
+    print(f"\nupdated {br.OVERRIDES.name}: {total} titles across {len(planned)} episode(s)")
     br.cmd_export()
 
 

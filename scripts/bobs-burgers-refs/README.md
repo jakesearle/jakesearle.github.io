@@ -36,20 +36,32 @@ match anything, so typos and entries that no longer match the wiki don't fail si
 ## Importing from IMDb Connections
 
 The wiki misses many references that an episode's IMDb Connections page lists
-(`imdb.com/title/tt…/movieconnections/`; each episode on the site links to it). To add them, copy
-the page's References / Spoofs / Features entries and pipe them in:
+(`imdb.com/title/tt…/movieconnections/`; each episode on the site links to it).
+
+**With the bookmarklet (recommended).** Open `bookmarklet.html` in your browser and drag the
+"Copy for watchlist" button to your bookmarks bar. Then, for each episode: open its IMDb link from
+the watchlist page and click the bookmark. Each click adds that page to a batch and copies the
+whole batch, tagged with each page's IMDb id. Import the batch in one go; episodes are matched by
+IMDb id:
 
 ```sh
-pbpaste | python3 scripts/bobs-burgers-refs/import_imdb.py S1E3 --dry-run   # preview
-pbpaste | python3 scripts/bobs-burgers-refs/import_imdb.py S1E3             # add + re-export
+open scripts/bobs-burgers-refs/bookmarklet.html                         # install, once
+pbpaste | python3 scripts/bobs-burgers-refs/import_imdb.py --dry-run   # preview
+pbpaste | python3 scripts/bobs-burgers-refs/import_imdb.py             # add + re-export
 ```
 
-It appends `add` entries to that episode's section in `overrides.toml` (creating it in episode
-order if needed), then re-exports. Titles the episode already lists, titles in `ignore` or that
-episode's `remove`, video games and music videos are skipped; TV series get `type = "tv"`. If the
-paste includes section headings, "Featured in", "Referenced in" and similar sections are dropped,
-since they list other works that mention the episode. IMDb's description becomes the note, so
-reword it in `overrides.toml` if you'd rather not publish IMDb's text as-is.
+Clear the batch from the bookmarklet's pop-up when you're done. The bookmarklet only reads the
+page you have open, the same text you'd select and copy by hand.
+
+**By hand.** Copy the page's References / Spoofs / Features entries and name the episode:
+`pbpaste | python3 scripts/bobs-burgers-refs/import_imdb.py S1E3`.
+
+Either way, new titles are appended to that episode's `add` list in `overrides.toml` (creating the
+section in episode order if needed), then the data is re-exported. Titles the episode already
+lists, titles in `ignore` or that episode's `remove`, video games and music videos are skipped; TV
+series get `type = "tv"`. "Featured in", "Referenced in" and similar sections are dropped, since
+they list other works that mention the episode. IMDb's description becomes the note, so reword it
+in `overrides.toml` if you'd rather not publish IMDb's text as-is.
 
 Tests: `python3 -m unittest scripts/bobs-burgers-refs/test_import_imdb.py`
 

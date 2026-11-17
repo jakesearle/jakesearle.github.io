@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from import_imdb import entry_line, episode_code, insert, parse  # noqa: E402
+from import_imdb import entry_line, episode_code, insert, parse, split_batch  # noqa: E402
 
 # How a copy from the IMDb page arrived in chat: markdown links, blank bullets between entries
 MARKDOWN_PASTE = """\
@@ -68,11 +68,47 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(got["Burgerboss"].kind, "skip")  # video game
         self.assertEqual(got["The Goonies"].section, "spoofs")
 
+    def test_stops_at_page_footer(self):
+        text = "Spoofs\nRain Man (1988)\nThe toothpick scene\nMore from this title\nPhotos\nCreated 1mo ago\n"
+        (e,) = parse(text)
+        self.assertEqual(e.description, "The toothpick scene")  # footer not glued on
+
     def test_episode_code(self):
         self.assertEqual(episode_code("S1E3"), (1, 3))
         self.assertEqual(episode_code("s01e03"), (1, 3))
         with self.assertRaises(SystemExit):
             episode_code("1x03")
+
+
+# What the bookmarklet copies: each page tagged with its IMDb id
+BATCH = """\
+=== IMDb tt2273811 ===
+Back
+Connections
+The Belchies
+Bob's Burgers
+References
+Footloose (1984)
+mentioned in dialogue
+
+=== IMDb tt1645218 ===
+Connections
+Human Flesh
+Spoofs
+Rain Man (1988)
+The toothpick scene
+"""
+
+
+class BatchTests(unittest.TestCase):
+    def test_splits_pages_by_imdb_id(self):
+        pages = split_batch(BATCH)
+        self.assertEqual([i for i, _ in pages], ["tt2273811", "tt1645218"])
+        self.assertEqual([e.title for e in parse(pages[0][1])], ["Footloose"])
+        self.assertEqual([e.title for e in parse(pages[1][1])], ["Rain Man"])
+
+    def test_plain_paste_is_not_a_batch(self):
+        self.assertIsNone(split_batch(MARKDOWN_PASTE))
 
 
 class EntryLineTests(unittest.TestCase):

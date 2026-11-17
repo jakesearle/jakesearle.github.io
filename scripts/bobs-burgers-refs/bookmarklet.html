@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Copy for Watchlist</title>
+    <style>
+      :root {
+        --bg: #fbf8f2;
+        --ink: #1f1b16;
+        --muted: #6f665b;
+        --line: #e3dccf;
+        --accent: #3451b2;
+        --code: #f1ece2;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #17140f;
+          --ink: #f1ebe1;
+          --muted: #a59b8d;
+          --line: #342e25;
+          --accent: #8ea2ff;
+          --code: #241f18;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          15px/1.55 -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 32px 16px 60px;
+      }
+      h1 {
+        font-size: 24px;
+        margin: 0 0 6px;
+      }
+      .sub {
+        color: var(--muted);
+        margin: 0 0 24px;
+      }
+      .install {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+        border: 1px dashed var(--line);
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 28px;
+      }
+      a.bm {
+        display: inline-block;
+        padding: 8px 14px;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: grab;
+      }
+      @media (prefers-color-scheme: dark) {
+        a.bm {
+          color: #17140f;
+        }
+      }
+      ol {
+        padding-left: 20px;
+      }
+      li {
+        margin: 6px 0;
+      }
+      code,
+      pre {
+        font:
+          13px/1.45 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+        background: var(--code);
+        border-radius: 4px;
+      }
+      code {
+        padding: 1px 5px;
+      }
+      pre {
+        padding: 12px;
+        overflow-x: auto;
+      }
+      details {
+        margin-top: 24px;
+        color: var(--muted);
+      }
+      summary {
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Copy for Watchlist</h1>
+      <p class="sub">
+        A bookmarklet for collecting IMDb Connections pages for the Bob's Burgers watchlist.
+      </p>
+
+      <div class="install">
+        <a class="bm" id="bm" href="#">Copy for watchlist</a>
+        <span>Drag this button to your bookmarks bar.</span>
+      </div>
+
+      <ol>
+        <li>
+          On the watchlist page, click an episode's
+          <strong>IMDb</strong>
+          link to open its Connections page.
+        </li>
+        <li>
+          Click
+          <strong>Copy for watchlist</strong>
+          in your bookmarks bar. It adds that page to a batch and copies the whole batch, so you can
+          repeat this for as many episodes as you like.
+        </li>
+        <li>
+          Import the batch from the repo:
+          <pre>
+pbpaste | python3 scripts/bobs-burgers-refs/import_imdb.py --dry-run
+pbpaste | python3 scripts/bobs-burgers-refs/import_imdb.py</pre>
+        </li>
+        <li>
+          Click
+          <strong>Clear batch</strong>
+          in the bookmarklet's pop-up (or clear it next time you start) so the next batch starts
+          empty. Re-importing pages is harmless: titles already listed are skipped.
+        </li>
+      </ol>
+      <p>
+        It only reads the page you're looking at, the same text you'd select and copy by hand. The
+        batch is kept in your browser's storage for imdb.com.
+      </p>
+
+      <details>
+        <summary>Bookmarklet source</summary>
+        <pre id="show"></pre>
+      </details>
+    </main>
+
+    <script type="text/plain" id="src">
+      (() => {
+        const KEY = 'bobsBurgersWatchlistBatch';
+        const m = location.pathname.match(/\/title\/(tt\d+)\/movieconnections/);
+        if (!m) {
+          alert("Open an episode's IMDb Connections page first (imdb.com/title/tt…/movieconnections/).");
+          return;
+        }
+        /* Same text a manual select-and-copy would give, cut where the page footer starts */
+        let text = (document.querySelector('main') || document.body).innerText;
+        const end = text.search(/\n\s*(Contribute to this page|More from this title|More to explore)\s*\n/);
+        if (end > 0) text = text.slice(0, end);
+
+        let batch = {};
+        try { batch = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { batch = {}; }
+        batch[m[1]] = text.trim();
+        try { localStorage.setItem(KEY, JSON.stringify(batch)); } catch (e) { /* storage blocked: copy this page only */ }
+        const ids = Object.keys(batch);
+        const out = ids.map((id) => '=== IMDb ' + id + ' ===\n' + batch[id]).join('\n\n') + '\n';
+
+        const fallbackCopy = (s) => {
+          const ta = document.createElement('textarea');
+          ta.value = s;
+          ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+          document.body.appendChild(ta);
+          ta.select();
+          let ok = false;
+          try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+          ta.remove();
+          return ok;
+        };
+        const copy = (s) =>
+          navigator.clipboard && navigator.clipboard.writeText
+            ? navigator.clipboard.writeText(s).then(() => true, () => fallbackCopy(s))
+            : Promise.resolve(fallbackCopy(s));
+
+        const old = document.getElementById('bb-watchlist-toast');
+        if (old) old.remove();
+        const toast = document.createElement('div');
+        toast.id = 'bb-watchlist-toast';
+        toast.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:2147483647;max-width:340px;' +
+          'background:#1f1b16;color:#f1ebe1;padding:12px 14px;border-radius:10px;font:14px/1.4 system-ui,sans-serif;' +
+          'box-shadow:0 6px 24px rgba(0,0,0,.35)';
+        const msg = document.createElement('div');
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:8px;margin-top:10px';
+        const button = (label) => {
+          const b = document.createElement('button');
+          b.textContent = label;
+          b.style.cssText = 'font:inherit;font-size:13px;padding:4px 10px;border-radius:6px;border:1px solid #6f665b;' +
+            'background:transparent;color:inherit;cursor:pointer';
+          row.appendChild(b);
+          return b;
+        };
+        const clear = button('Clear batch');
+        const close = button('Close');
+        toast.append(msg, row);
+        document.body.appendChild(toast);
+        let timer = setTimeout(() => toast.remove(), 8000);
+        toast.addEventListener('mouseenter', () => clearTimeout(timer));
+        close.onclick = () => toast.remove();
+        clear.onclick = () => {
+          try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+          msg.textContent = 'Batch cleared. Your clipboard still has the last copy.';
+          clear.remove();
+        };
+
+        copy(out).then((ok) => {
+          const n = ids.length + (ids.length === 1 ? ' page' : ' pages');
+          msg.textContent = ok
+            ? 'Copied ' + n + ' for the watchlist. Open the next episode and click again, or run the import.'
+            : 'Couldn\'t copy automatically (' + n + ' in the batch). Try clicking the bookmarklet again.';
+        });
+      })();
+    </script>
+    <script>
+      const src = document.getElementById('src').textContent.trim();
+      document.getElementById('bm').href = 'javascript:' + encodeURIComponent(src);
+      document.getElementById('show').textContent = src;
+      document.getElementById('bm').addEventListener('click', (e) => {
+        e.preventDefault();
+        alert('Drag this to your bookmarks bar, then click it on an IMDb Connections page.');
+      });
+    </script>
+  </body>
+</html>
