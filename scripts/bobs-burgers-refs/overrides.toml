@@ -16,12 +16,14 @@ movies = [
   "The Shining",
   "Sixteen Candles",   # S01E06, S11E04
   "Sabata",            # S01E09: 1969 spaghetti western
+  "Star Wars",         # S02E02: "R2-D2 Hall" at Robot College
 ]
 
 tv = [
   "Malcolm in the Middle",
   "The Love Boat",
   "Family Guy",        # S01E03
+  "Friends",           # S02E04
 ]
 
 ignore = [
@@ -29,6 +31,19 @@ ignore = [
   "Dong Day Afternoon",         # S01E06: same marquee (Dog Day Afternoon stays)
   "Pink Elephants On Parade",   # S01E08: a song/segment from Dumbo, which is listed itself
   "Family Gay",                 # S01E03: an episode of Family Guy, which is listed itself
+  "ChalkZone",                  # S02E01: the wiki only says the plot is similar to one of its episodes
+  "Hole In The Wall",           # S02E01: that ChalkZone episode
+  "R2-D2 Hall",                 # S02E02: a hall name (Star Wars is listed)
+  "The Return of the Revenge of Dr. Blowhole",  # S02E04: Emmy trivia, not a reference
+  "The Penguins of Madagascar",                 # S02E04: same
+  "Super Mario Bros",           # S02E04: studio trivia (an NES joke made for the episode)
+  "Grand Theft Arlen",          # S02E04: shared sound effects, not a reference
+  "Keep on Truckin'",           # S02E05: a cartoon drawing, not a show
+  "R. Crumb",                   # S02E05: the cartoonist who drew it
+  "Lollapalooza",               # S02E05: a music festival
+  "Paddy's Pub: The Worst Bar in Philadelphia",  # S02E07: a similar plot, not a reference
+  "Sasquatch",                  # S02E09: the creature
+  "Get On Up",                  # S02E09: the show's parody name for Today, which is listed
 ]
 
 # ── Per-episode fixes ─────────────────────────────────────────────────────────────────────────
@@ -110,4 +125,75 @@ add = [
   { title = "Footloose", year = 1984, note = "Mentioned in dialogue (from IMDb Connections)." },
   { title = "The Godfather Part III", year = 1990, note = "Quoted in dialogue (from IMDb Connections)." },
   { title = "127 Hours", year = 2010, note = "Louise says she doesn't need to cut off her arm like the guy in this movie (from IMDb Connections)." },
+]
+
+[S02E02]  # Bob Day Afternoon — from IMDb's Connections page
+add = [
+  { title = "The Bachelor", type = "tv", note = "Mentioned in dialogue. (from IMDb Connections)" },
+  { title = "Psych", type = "tv", note = "Gary Cole plays the hostage negotiator. (from IMDb Connections)" },
+]
+
+[S02E03]  # Synchronized Swimming — from IMDb's Connections page
+add = [
+  { title = "Caddyshack", year = 1980, note = "When poop is found in the pool, Bob mentions that Louise \"pulled a Caddyshack\". Also, the Ratty Shack exterminator van at the beginning with the dancing rat on the side. (from IMDb Connections)" },
+  { title = "Dynasty", type = "tv", note = "Linda mentions that she has it on VHS. (from IMDb Connections)" },
+  { title = "Flashdance", year = 1983, note = "Mentioned by Tina. (from IMDb Connections)" },
+  { title = "The Lord of the Rings: The Fellowship of the Ring", year = 2001, note = "\"You shall not pass\" poster. (from IMDb Connections)" },
+  { title = "Ghost", year = 1990, note = "The clay wheel scene is spoofed when Linda fantasizes about Bob teaching her to use the soft serve machine. (from IMDb Connections)" },
+]
+
+[S02E04]  # Burgerboss — from IMDb's Connections page
+remove = ["King of The Hill", "Spider-Man"]  # shared sound effects; a passing web-shooter joke
+add = [
+  { title = "Gilligan's Island", type = "tv", note = "Linda hums as she enters the yacht club and ends it with \"three hour tour\". (from IMDb Connections)" },
+  { title = "Knots Landing", type = "tv", note = "Mentioned by Linda. (from IMDb Connections)" },
+  { title = "E.T. the Extra-Terrestrial", year = 1982, note = "Mentioned by Darryl. (from IMDb Connections)" },
+  { title = "Good Night, and Good Luck.", year = 2005, note = "The \"Good Night and Good Leek Burger\" puns on this film's title. (IMDb Connections lists See It Now, the TV show the film is about.)" },
+  { title = "A Bridge Too Far", year = 1977, note = "Store next door: \"A Fridge Too Far\". (from IMDb Connections)" },
+]
+
+[S02E05]  # Food Truckin' — from IMDb's Connections page
+add = [
+  { title = "The Music Man", year = 1962, note = "Mentioned in dialogue. (from IMDb Connections)" },
+  { title = "The Partridge Family", type = "tv", note = "Mentioned in dialogue. (from IMDb Connections)" },
+  { title = "The Godfather", year = 1972, note = "Mentioned in dialogue. (from IMDb Connections)" },
+  { title = "Top Gun", year = 1986, note = "Bob tells Louise, \"Talk to me, Goose.\" (from IMDb Connections)" },
+  { title = "Pretty Woman", year = 1990, note = "Mentioned in dialogue. (from IMDb Connections)" },
+  { title = "Casablanca", year = 1942, note = "\"Here's lookin' at you, Squid\" (from IMDb Connections)" },
+  { title = "Ghostbusters", year = 1984, note = "\"Roastbusters\" (from IMDb Connections)" },
+  { title = "Driving Miss Daisy", year = 1989, note = "\"Driving Miss Crazy\" (from IMDb Connections)" },
+]
+
+[S02E06]  # Dr. Yap (Episode) — from IMDb's Connections page
+add = [
+  { title = "An American Werewolf in London", year = 1981, note = "Bob opens the medicine cabinet and closes it to the reflection of Gayle behind him. (from IMDb Connections)" },
+  { title = "Milk", year = 2008, note = "Mentioned in dialogue. (from IMDb Connections)" },
+  { title = "Eat Pray Love", year = 2010, note = "Mentioned in dialogue. (from IMDb Connections)" },
+  { title = "The Wizard of Oz", year = 1939, note = "\"Wicked Witch of the Pest\" (from IMDb Connections)" },
+]
+
+[S02E07]  # Moody Foodie (Episode) — from IMDb's Connections page
+add = [
+  { title = "Tin Cup", year = 1996, note = "The food critic receives a DVD copy of this movie. (from IMDb Connections)" },
+  { title = "Little Miss Sunshine", year = 2006, note = "Referenced with Bob's burger of the day. (from IMDb Connections)" },
+  { title = "Borat", year = 2006, note = "Borat is imitated in Bob's nightmare. (from IMDb Connections)" },
+]
+
+[S02E08]  # Bad Tina — from IMDb's Connections page
+add = [
+  { title = "Grease", year = 1978, note = "\"Tell me about it, stud\" (from IMDb Connections)" },
+  { title = "Manimal", type = "tv", note = "\"Manimal\" (from IMDb Connections)" },
+  { title = "60 Minutes", type = "tv", note = "\"Sexy 60 Minutes\" (from IMDb Connections)" },
+  { title = "Sesame Street", type = "tv", note = "\"Sexy Sesame Street\" (from IMDb Connections)" },
+  { title = "The Muppet Show", type = "tv", note = "\"Erotic Muppets\" (from IMDb Connections)" },
+  { title = "Footloose", year = 1984, note = "\"Buttloose\" (from IMDb Connections)" },
+  { title = "The NeverEnding Story", year = 1984, note = "\"NeverEnding Gory\" is playing at the theater. (from IMDb Connections)" },
+]
+
+[S02E09]  # Beefsquatch — from IMDb's Connections page
+add = [
+  { title = "Today", type = "tv", note = "Chuck compares Bob and Gene's segment to a segment on Today from the 1950's. (from IMDb Connections)" },
+  { title = "Do the Right Thing", year = 1989, note = "Louise throws a trash can through the window when Bob and Gene are fighting. (from IMDb Connections)" },
+  { title = "How the West Was Won", year = 1962, note = "\"How the Pest was Won\" (from IMDb Connections)" },
+  { title = "Mommie Dearest", year = 1981, note = "Storefront that reads \"Yes, Wire Hangers!\", a play on the line \"No wire hangers!\" (from IMDb Connections)" },
 ]

@@ -73,6 +73,11 @@ class ParseTests(unittest.TestCase):
         (e,) = parse(text)
         self.assertEqual(e.description, "The toothpick scene")  # footer not glued on
 
+    def test_drops_more_buttons(self):
+        (e,) = parse("References\nPretty Woman (1990)\nMentioned in dialogue\n1 more\n")
+        self.assertEqual(e.description, "Mentioned in dialogue")
+        self.assertEqual(sentence("Playing at the theater 7 more"), "Playing at the theater.")
+
     def test_episode_code(self):
         self.assertEqual(episode_code("S1E3"), (1, 3))
         self.assertEqual(episode_code("s01e03"), (1, 3))

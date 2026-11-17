@@ -36,7 +36,8 @@ DROP_SECTIONS = {"featured in", "referenced in", "spoofed in", "edited into", "f
                  "spin-off", "alternate language version of", "references (in)"}
 # Page chrome that shows up when copying a whole page
 NOISE = re.compile(r"^(edit|jump to|suggest an edit.*|learn more.*|edit page|back|connections|"
-                   r"cast & crew|user reviews|trivia|imdbpro|all topics)$", re.I)
+                   r"cast & crew|user reviews|trivia|imdbpro|all topics|"
+                   r"\d+ more)$", re.I)  # "7 more": the button that expands collapsed notes
 # The Connections list ends where the page footer starts; ignore everything after it
 END = re.compile(r"^(contribute to this page|more from this title|more to explore)$", re.I)
 # How the bookmarklet tags each page it copies
@@ -121,7 +122,7 @@ def sentence(text):
 
     'mentioned in dialogue' -> 'Mentioned in dialogue.'   '"Serpentine!"' stays as it is.
     """
-    d = text.strip()
+    d = re.sub(r"\s+\d+ more$", "", text.strip())  # "Mentioned in dialogue 1 more"
     if not d:
         return ""
     d = d[0].upper() + d[1:]
