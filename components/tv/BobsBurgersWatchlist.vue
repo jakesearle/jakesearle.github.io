@@ -4,6 +4,8 @@ import data from '../../tv/bobs-burgers/watchlist.json';
 import {
   episodeCode,
   filterEpisodes,
+  groupMaybes,
+  highlightSegments,
   justWatchUrl,
   titleTally,
   type SeenSet,
@@ -217,9 +219,14 @@ const heuristicsNote =
           {{ ep.maybes.length }} other mention{{ ep.maybes.length > 1 ? 's' : '' }} (unsure what
           they are)
         </summary>
-        <div class="chips">
-          <span v-for="m in ep.maybes" :key="m" class="chip">{{ m }}</span>
-        </div>
+        <ul class="maybes">
+          <li v-for="g in groupMaybes(ep.maybes)" :key="g.context">
+            <template v-for="(seg, i) in highlightSegments(g.context, g.titles)" :key="i">
+              <mark v-if="seg.hit">{{ seg.text }}</mark>
+              <template v-else>{{ seg.text }}</template>
+            </template>
+          </li>
+        </ul>
       </details>
     </article>
 
@@ -366,6 +373,12 @@ ul.titles li {
   margin: 6px 0;
 }
 
+/* the text column fills the row, so "Where to watch" can sit at the right edge */
+ul.titles li > div {
+  flex: 1;
+  min-width: 0;
+}
+
 ul.titles li input {
   margin-top: 5px;
   accent-color: var(--vp-c-brand-1);
@@ -461,17 +474,21 @@ details summary {
   cursor: pointer;
 }
 
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 6px;
+ul.maybes {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  line-height: 1.45;
 }
 
-.chip {
-  background: var(--vp-c-default-soft);
-  border-radius: 999px;
-  padding: 1px 9px;
+ul.maybes li + li {
+  margin-top: 4px;
+}
+
+/* the unsure titles, highlighted where they appear in the trivia line */
+ul.maybes mark {
+  background: none;
+  color: var(--vp-c-text-1);
+  font-weight: 600;
 }
 
 .credit {

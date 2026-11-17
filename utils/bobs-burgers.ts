@@ -23,7 +23,13 @@ export interface WatchlistEpisode {
   imdb: string | null;
   wiki: string;
   titles: WatchlistTitle[];
-  maybes: string[]; // titles the heuristics couldn't classify
+  maybes: Maybe[];
+}
+
+// A title the heuristics couldn't classify, with the full trivia line it came from.
+export interface Maybe {
+  title: string;
+  context: string;
 }
 
 export interface Watchlist {
@@ -77,6 +83,48 @@ export function filterEpisodes(
     if (f.hideEmpty && !titles.length) continue;
     out.push({ ...ep, titles });
   }
+  return out;
+}
+
+// One trivia line often mentions several unclassified titles ("similar to the
+// ChalkZone episode, 'Hole In The Wall'"); group them so each line shows once.
+// Lines keep the order their first title appeared in.
+export function groupMaybes(maybes: Maybe[]): { titles: string[]; context: string }[] {
+  const groups = new Map<string, string[]>();
+  for (const m of maybes) {
+    const titles = groups.get(m.context);
+    if (titles) titles.push(m.title);
+    else groups.set(m.context, [m.title]);
+  }
+  return [...groups].map(([context, titles]) => ({ titles, context }));
+}
+
+// Splits `text` into plain and matched pieces so the titles can be highlighted
+// where they appear. Case-insensitive; earliest (then longest) match wins.
+export function highlightSegments(
+  text: string,
+  titles: string[]
+): { text: string; hit: boolean }[] {
+  const lower = text.toLowerCase();
+  const needles = titles.map((t) => t.toLowerCase()).filter(Boolean);
+  const out: { text: string; hit: boolean }[] = [];
+  let i = 0;
+  while (i < text.length) {
+    let start = -1;
+    let len = 0;
+    for (const n of needles) {
+      const at = lower.indexOf(n, i);
+      if (at !== -1 && (start === -1 || at < start || (at === start && n.length > len))) {
+        start = at;
+        len = n.length;
+      }
+    }
+    if (start === -1) break;
+    if (start > i) out.push({ text: text.slice(i, start), hit: false });
+    out.push({ text: text.slice(start, start + len), hit: true });
+    i = start + len;
+  }
+  if (i < text.length) out.push({ text: text.slice(i), hit: false });
   return out;
 }
 

@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   episodeCode,
   filterEpisodes,
+  groupMaybes,
+  highlightSegments,
   justWatchUrl,
   titleTally,
   type TitleType,
@@ -158,6 +160,55 @@ describe('filterEpisodes', () => {
     filterEpisodes(EPISODES, { ...ALL, mustWatchOnly: true, type: 'tv' });
     expect(EPISODES[2].titles).toHaveLength(2);
     expect(EPISODES[4].titles).toHaveLength(3);
+  });
+});
+
+describe('groupMaybes', () => {
+  it('groups titles that share a trivia line, keeping first-seen order', () => {
+    const line = 'This episode is similar to the ChalkZone episode, "Hole In The Wall."';
+    expect(
+      groupMaybes([
+        { title: 'ChalkZone', context: line },
+        { title: 'Yahoo', context: 'Gene searches Yahoo.' },
+        { title: 'Hole In The Wall', context: line },
+      ])
+    ).toEqual([
+      { titles: ['ChalkZone', 'Hole In The Wall'], context: line },
+      { titles: ['Yahoo'], context: 'Gene searches Yahoo.' },
+    ]);
+  });
+
+  it('returns nothing for no maybes', () => {
+    expect(groupMaybes([])).toEqual([]);
+  });
+});
+
+describe('highlightSegments', () => {
+  const join = (segs: { text: string; hit: boolean }[]) =>
+    segs.map((s) => (s.hit ? `[${s.text}]` : s.text)).join('');
+
+  it('marks every title occurrence, case-insensitively', () => {
+    const line = 'Similar to the ChalkZone episode, "Hole in the Wall."';
+    expect(join(highlightSegments(line, ['ChalkZone', 'Hole In The Wall']))).toBe(
+      'Similar to the [ChalkZone] episode, "[Hole in the Wall]."'
+    );
+  });
+
+  it('prefers the longer title when two start at the same place', () => {
+    expect(
+      join(
+        highlightSegments('a Star Wars Holiday Special nod', [
+          'Star Wars',
+          'Star Wars Holiday Special',
+        ])
+      )
+    ).toBe('a [Star Wars Holiday Special] nod');
+  });
+
+  it('returns the whole line unmarked when no title is found', () => {
+    expect(highlightSegments('nothing here', ['Jaws'])).toEqual([
+      { text: 'nothing here', hit: false },
+    ]);
   });
 });
 

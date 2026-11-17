@@ -268,7 +268,7 @@ def cmd_extract():
                     **c,
                     "kind_guess": guess_kind(c, text),
                     "major": bool(MAJOR_WORDS.search(b)),
-                    "context": text[:400],
+                    "context": text,  # whole trivia line; titles get trimmed on export
                 })
         episodes.append(ep)
     episodes.sort(key=lambda e: (e["season"], e["number"]))
@@ -451,8 +451,8 @@ def cmd_export():
             if simple(r["title"]) in removed:
                 continue
             if kind == "unknown":
-                if r["title"] not in maybes:
-                    maybes.append(r["title"])
+                if all(simple(m["title"]) != simple(r["title"]) for m in maybes):
+                    maybes.append({"title": r["title"], "context": r["context"]})
                 continue
             if kind not in ("movie", "tv"):
                 continue
@@ -477,7 +477,7 @@ def cmd_export():
                 "context": a.get("note", "Added by hand."),
             }, bool(a.get("must_watch")))
 
-        present = {simple(t["title"]) for t in titles.values()} | {simple(m) for m in maybes}
+        present = {simple(t["title"]) for t in titles.values()} | {simple(m["title"]) for m in maybes}
         for t in fix.get("remove", []):
             if simple(t) not in present and not any(simple(t) == simple(r["title"]) for r in e["refs"]):
                 misses.append(f"[{code}] remove {t!r} isn't in that episode")
@@ -490,7 +490,7 @@ def cmd_export():
                     misses.append(f"[{code}] {field} {t!r} isn't listed for that episode")
 
         # anything typed by override is no longer a "maybe"
-        maybes = [m for m in maybes if simple(m) not in titles]
+        maybes = [m for m in maybes if simple(m["title"]) not in titles]
         ordered = sorted(titles.values(), key=lambda t: (not t["major"], t["type"] != "movie"))
         data.append({k: e[k] for k in ("title", "season", "number", "aired", "imdb", "wiki")}
                     | {"titles": ordered, "maybes": maybes})
